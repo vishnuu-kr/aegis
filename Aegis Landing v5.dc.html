@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentGrid — Identity for AI agents · YC W26</title>
+<meta name="description" content="AgentGrid mints cryptographic passports for autonomous AI agents — governed by mandates you sign, revocable with one key. Backed by Y Combinator.">
+<meta property="og:title" content="AgentGrid — Identity for AI agents">
+<meta property="og:description" content="The control plane that gives an autonomous agent its own credentials, inbox, phone, cards, and compute — governed by cryptographic mandates you sign.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AgentGrid — Identity for AI agents">
+<meta name="twitter:description" content="Give your AI agent its own passport. Governed by mandates you sign, revocable with one key.">
+<script src="./support.js?_cb=20260623"></script>
+<script>(function(){try{if(localStorage.getItem('aeg-theme')==='dark')document.documentElement.setAttribute('data-theme','dark');if(localStorage.getItem('aeg-announcement-dismissed')==='true')document.documentElement.classList.add('aeg-announcement-dismissed');}catch(e){}})();</script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN TOKENS (warm editorial palette) ============ */
+:root {
+  --paper:        #efece4;
+  --paper-2:      #f6f3ec;
+  --surface:      #fcfbf7;
+  --surface-2:    #ffffff;
+  --ink:          #16140f;
+  --ink-soft:     #2c2820;
+  --muted:        #504a3e;
+  --faint:        #5c5649;
+  --line:         rgba(22,20,15,.085);
+  --line-soft:    rgba(22,20,15,.05);
+  --copper:       #b84c30;
+  --copper-br:    #d46547;
+  --copper-deep:  #8e351d;
+  --copper-tint:  #f6e8e2;
+  --ok:           #2f9e63;
+  --info:         #2f8fb8;
+  --warn:         #c2842a;
+  --bad:          #c4452f;
+  --dark:         #161410;
+  --dark-2:       #201c14;
+  --ease:         cubic-bezier(.22,1,.36,1);
+  --shadow-card:  0 1px 1px rgba(24,21,16,.035), 0 1px 0 rgba(255,255,255,.65) inset;
+  --shadow-lift:  0 22px 50px -24px rgba(24,21,16,.2), 0 4px 12px -6px rgba(24,21,16,.06);
+  --shadow-dark:  0 36px 90px -34px rgba(20,16,9,.62), 0 1px 0 rgba(255,255,255,.05) inset;
+}
+
+[data-theme="dark"] {
+  --paper:        #0e1014;
+  --paper-2:      #11131a;
+  --surface:      #161820;
+  --surface-2:    #1c1f2a;
+  --ink:          #f0ede4;
+  --ink-soft:     #d4cfc4;
+  --muted:        #989488;
+  --faint:        #6b675c;
+  --line:         rgba(255,255,255,.07);
+  --line-soft:    rgba(255,255,255,.04);
+  --copper:       #e2745a;
+  --copper-br:    #f38d74;
+  --copper-deep:  #bc553b;
+  --copper-tint:  rgba(226, 116, 90, 0.12);
+  --ok:           #47c984;
+  --info:         #4ca8d4;
+  --warn:         #d4973a;
+  --bad:          #d45949;
+  --dark:         #0a0c10;
+  --dark-2:       #0e1016;
+}
+
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:74px; }
+body {
+  margin:0; padding:0;
+  color:var(--ink);
+  background:var(--paper);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.6;
+  font-feature-settings:'cv11' 1,'ss01' 1,'calt' 1;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+::selection { background:rgba(187,106,49,.16); color:var(--ink); }
+
+/* ============ ATMOSPHERE: glow + grain ============ */
+.aeg-page {
+  position:relative; min-height:100vh;
+  background-color:var(--paper);
+  background-image:
+    radial-gradient(1180px 640px at 50% -300px, rgba(212,134,63,.10), transparent 60%),
+    radial-gradient(900px 540px at 100% 120px, rgba(212,134,63,.045), transparent 58%),
+    radial-gradient(820px 560px at -4% 820px, rgba(150,120,80,.04), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.026'/%3E%3C/svg%3E");
+}
+.aeg-wrap { max-width:1160px; margin:0 auto; padding-left:32px; padding-right:32px; }
+
+/* ============ TYPE ============ */
+.display {
+  font-family:'Bricolage Grotesque','Inter',sans-serif;
+  font-weight:700; letter-spacing:-.022em; color:var(--ink);
+  font-optical-sizing:auto;
+}
+.mono { font-family:'JetBrains Mono',monospace; font-feature-settings:'tnum' 1; }
+.accent-it { color:var(--copper); font-style:normal; }
+.kicker { font-size:11.5px; letter-spacing:2.4px; text-transform:uppercase; color:var(--faint); font-weight:600; }
+
+/* ============ EYEBROW ============ */
+.eyebrow { display:inline-flex; align-items:center; gap:11px; margin-bottom:18px; }
+.eyebrow-num {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:26px; height:22px; padding:0 8px; border-radius:7px;
+  font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600;
+  color:var(--copper-deep);
+  background:linear-gradient(180deg,#fdf1ee,var(--copper-tint));
+  border:1px solid rgba(187,106,49,.2);
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset;
+}
+.eyebrow-label { font-size:14px; font-weight:600; color:var(--ink-soft); }
+[data-theme="dark"] .eyebrow-label { color:rgba(255,255,255,.78); }
+[data-theme="dark"] .eyebrow-num {
+  color:var(--copper-br);
+  background:rgba(219,140,70,.12);
+  border-color:rgba(219,140,70,.28);
+  box-shadow:none;
+}
+
+/* ============ BUTTONS ============ */
+.btn {
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:'Inter',sans-serif; font-size:14.5px; font-weight:590;
+  letter-spacing:-.1px; text-decoration:none; cursor:pointer; border:none;
+  transition:transform .3s var(--ease),padding .3s var(--ease),box-shadow .3s var(--ease),background .25s var(--ease);
+}
+.btn-copper {
+  color:#fff; padding:13px 26px; border-radius:999px;
+  background:linear-gradient(177deg,var(--copper-br),var(--copper));
+  box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 10px 24px -12px rgba(155,83,29,.6);
+}
+.btn-copper:hover { padding:13px 38px; box-shadow:0 1px 0 rgba(255,255,255,.38) inset,0 16px 32px -14px rgba(155,83,29,.72); }
+.btn-ghost {
+  color:var(--ink); padding:12px 22px; border-radius:999px;
+  background:rgba(255,253,248,.45); border:1px solid var(--line);
+  box-shadow:0 1px 2px rgba(22,20,14,.025);
+}
+.btn-ghost:hover { padding:12px 34px; background:var(--surface-2); border-color:rgba(187,106,49,.35); }
+.btn-cta-primary {
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:'Inter',sans-serif; font-size:15px; font-weight:600;
+  letter-spacing:-.1px; text-decoration:none; cursor:pointer;
+  border-radius:999px; padding:12.5px 28px;
+  background:linear-gradient(177deg,var(--copper-br),var(--copper));
+  color:#ffffff !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 10px 24px -12px rgba(155,83,29,.6);
+  transition:transform .3s var(--ease),padding .3s var(--ease),box-shadow .3s var(--ease);
+}
+.btn-cta-primary:hover {
+  padding:12.5px 40px;
+  box-shadow:0 1px 0 rgba(255,255,255,.38) inset,0 16px 32px -14px rgba(155,83,29,.72);
+}
+
+/* ============ PANEL DARK ============ */
+.panel-dark {
+  position:relative;
+  background:linear-gradient(168deg,#211d15,#141109);
+  border:1px solid rgba(255,255,255,.06); border-radius:0;
+  box-shadow:var(--shadow-dark); overflow:hidden;
+}
+.panel-dark::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(600px 220px at 70% -40px, rgba(219,140,70,.16), transparent 70%);
+}
+.z { position:relative; z-index:1; }
+.dot { width:10px; height:10px; border-radius:50%; }
+.win-dots span { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.11); display:inline-block; }
+[data-theme="dark"] .panel-dark {
+  background:linear-gradient(168deg,#14171d,#0a0c10);
+  border:1px solid rgba(255,255,255,.08);
+}
+[data-theme="dark"] .panel-dark::before {
+  background:radial-gradient(600px 240px at 70% -40px, rgba(242,169,85,.16), transparent 70%);
+}
+
+/* ============ CARDS ============ */
+.card {
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:0; padding:32px;
+  box-shadow:var(--shadow-card);
+  transition:box-shadow .3s var(--ease),transform .3s var(--ease);
+}
+.card-hover:hover { box-shadow:var(--shadow-lift); transform:translateY(-2px); }
+
+/* ============ PILLS / BADGES ============ */
+.pill-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:7px 15px 7px 13px; border-radius:999px;
+  background:linear-gradient(180deg,var(--surface-2),var(--surface));
+  border:1px solid var(--line); text-decoration:none;
+  font-size:13.5px; color:var(--muted);
+  box-shadow:0 1px 2px rgba(22,20,14,.05),0 1px 0 rgba(255,255,255,.6) inset;
+  transition:border-color .3s var(--ease),transform .3s var(--ease),box-shadow .3s var(--ease);
+}
+.pill-badge:hover { border-color:rgba(192,111,51,.4); transform:translateY(-1px); box-shadow:0 6px 16px -8px rgba(22,20,14,.25); }
+
+/* ============ NAV ============ */
+.aeg-nav {
+  position:sticky; top:0; z-index:50;
+  background:rgba(235,227,210,.66);
+  border-bottom:1px solid var(--line-soft);
+  backdrop-filter:blur(20px) saturate(1.5);
+  -webkit-backdrop-filter:blur(20px) saturate(1.5);
+}
+[data-theme="dark"] .aeg-nav { background:rgba(10,12,16,.75); }
+.nav-inner {
+  display:flex; align-items:center; justify-content:space-between;
+  height:60px; max-width:1160px; margin:0 auto; padding:0 32px; gap:32px;
+}
+.nav-brand {
+  font-family:'Bricolage Grotesque','Inter',sans-serif; font-weight:800; font-size:18px;
+  letter-spacing:-.02em; color:var(--ink); text-decoration:none; white-space:nowrap;
+}
+.nav-links { display:flex; align-items:center; gap:20px; }
+.nav-link {
+  font-size:14px; color:var(--muted); text-decoration:none; padding:7px 12px; border-radius:8px;
+  transition:color .2s var(--ease),background .2s var(--ease);
+}
+.nav-link:hover { color:var(--ink); background:rgba(24,21,16,.04); }
+.theme-toggle {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:8px; border:1px solid var(--line);
+  background:rgba(255,255,255,.4); color:var(--muted); cursor:pointer;
+  font-size:15px; transition:all .2s var(--ease);
+}
+.theme-toggle:hover { color:var(--ink); border-color:rgba(187,106,49,.35); }
+.mobile-menu-toggle {
+  display:none; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:8px; border:1px solid var(--line);
+  background:rgba(255,255,255,.4); color:var(--muted); cursor:pointer;
+  font-size:18px; transition:all .2s var(--ease);
+}
+.mobile-menu-toggle:hover { color:var(--ink); border-color:rgba(187,106,49,.35); }
+.mobile-menu {
+  position:absolute; top:63px; left:16px; right:16px; z-index:100;
+  border-radius:0; padding:24px;
+  background:rgba(255,253,248,.95); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px);
+  border:1px solid var(--line); box-shadow:0 10px 30px -10px rgba(22,20,14,.15);
+  transform-origin:top center; transition:transform .25s var(--ease),opacity .25s var(--ease),visibility 0s .25s;
+  opacity:0; transform:scaleY(.95) translateY(-10px); pointer-events:none; visibility:hidden;
+  display:flex; flex-direction:column; gap:16px;
+}
+.mobile-menu.is-open {
+  opacity:1; transform:none; pointer-events:auto; visibility:visible;
+  transition:transform .25s var(--ease),opacity .25s var(--ease),visibility 0s 0s;
+}
+[data-theme="dark"] .mobile-menu { background:rgba(14,16,20,.95); border-color:rgba(255,255,255,.08); }
+.mobile-nav-link { font-size:16px; font-weight:560; color:var(--ink-soft); text-decoration:none; padding:10px 14px; border-radius:8px; }
+
+/* ============ HERO ============ */
+.hero-bg-container {
+  position:relative; width:100%; overflow:hidden;
+  background:
+    radial-gradient(ellipse 100% 70% at 50% 60%, rgba(219,140,70,.08) 0%, rgba(255,253,248,.6) 60%, transparent 100%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 40%, var(--surface) 75%, var(--paper) 100%);
+}
+[data-theme="dark"] .hero-bg-container {
+  background:
+    radial-gradient(ellipse 100% 75% at 50% 55%, rgba(53,62,194,.45) 0%, rgba(212,219,255,.25) 50%, transparent 100%),
+    linear-gradient(180deg, #08090c 0%, #0c0e1a 40%, #161b40 75%, #08090c 100%);
+}
+
+/* ============ SECTION ============ */
+.aeg-section { padding-top:96px; padding-bottom:96px; }
+
+/* ============ GRIDS ============ */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+/* ============ COMPARISON TABLE ============ */
+.cmp { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+.cmp th, .cmp td { padding:18px 16px; text-align:center; font-size:14px; border-bottom:1px solid var(--line); border-right:1px solid var(--line); vertical-align:middle; }
+.cmp th:last-child, .cmp td:last-child { border-right:none; }
+.cmp tbody tr:last-child td { border-bottom:none; }
+.cmp th:first-child, .cmp td:first-child { text-align:left; font-weight:600; color:var(--ink); border-right:1px solid var(--line); }
+.cmp thead th:first-child { font-size:14.5px; font-weight:700; color:var(--ink); text-transform:none; letter-spacing:normal; line-height:1.35; padding:20px; }
+.cmp-logo-wrap { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+.cmp-logo-text { font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; }
+.cmp .cell-mark { font-size:17px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; width:100%; height:100%; }
+.cmp .cell-yes { color:var(--ok); }
+.cmp .cell-no { color:var(--faint); opacity:.35; }
+.cmp .col-highlight {
+  background-image:
+    radial-gradient(circle at 20% 50px, rgba(219,140,70,.15) 0%, rgba(219,140,70,0) 120px),
+    radial-gradient(circle at 80% 250px, rgba(242,169,85,.15) 0%, rgba(242,169,85,0) 140px),
+    linear-gradient(to bottom, rgba(192,111,51,.03), rgba(192,111,51,.08));
+  background-size:100% 600px; background-repeat:no-repeat;
+}
+.cmp .col-highlight .cell-yes { color:var(--ink); font-weight:700; }
+[data-theme="dark"] .cmp .col-highlight {
+  background-image:
+    radial-gradient(circle at 20% 50px, rgba(242,169,85,.12) 0%, rgba(242,169,85,0) 120px),
+    radial-gradient(circle at 80% 250px, rgba(242,169,85,.10) 0%, rgba(242,169,85,0) 140px),
+    linear-gradient(to bottom, rgba(242,169,85,.04), rgba(242,169,85,.10));
+}
+[data-theme="dark"] .cmp tbody tr:hover { background:rgba(255,255,255,.025); }
+
+/* ============ HAIRLINE ============ */
+.hairline { height:1px; background:linear-gradient(90deg,transparent,var(--line),transparent); }
+
+/* ============ CODE BLOCKS ============ */
+.code-block {
+  font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.9;
+  color:var(--ink); overflow-x:auto;
+  padding:16px 20px; background:var(--paper-2);
+  border:1px solid var(--line-soft); border-radius:0;
+}
+[data-theme="dark"] .code-block { background:rgba(255,255,255,.025); border-color:rgba(255,255,255,.05); }
+.code-block .kw { color:var(--copper); font-weight:600; }
+.code-block .cm { color:var(--faint); }
+.code-block .ok { color:var(--ok); }
+
+/* ============ APPROVAL CARD ============ */
+.approval-visual-col {
+  padding:44px; display:flex; align-items:center; justify-content:center;
+  border-left:1px solid rgba(255,255,255,.07);
+}
+.approval-card {
+  position:relative; width:100%; max-width:320px; border-radius:20px; padding:22px;
+  background:rgba(255,253,248,.9);
+  -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  backdrop-filter:blur(16px) saturate(1.4);
+  border:1px solid rgba(255,255,255,.5);
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 34px 70px -26px rgba(0,0,0,.6),0 8px 22px -14px rgba(0,0,0,.4);
+}
+[data-theme="dark"] .approval-card {
+  background:rgba(28,31,42,.88);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 34px 70px -26px rgba(0,0,0,.8);
+}
+
+/* ============ CTA SECTION ============ */
+.cta-section-new {
+  position:relative; overflow:hidden;
+  padding:96px 0; text-align:center;
+}
+.cta-pixel-grid {
+  position:absolute; inset:0; pointer-events:none; z-index:0;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+}
+/* large pixel squares — visible grid */
+.cta-pixel-grid::before {
+  content:''; position:absolute; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect x='0' y='0' width='4' height='4' fill='%238e351d' opacity='.12'/%3E%3C/svg%3E");
+  background-size: 16px 16px;
+}
+/* fine pixel squares — micro-texture */
+.cta-pixel-grid::after {
+  content:''; position:absolute; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23b84c30' opacity='.2'/%3E%3C/svg%3E");
+  background-size: 4px 4px;
+}
+/* warm glow overlay */
+.cta-pixel-grid-glow {
+  position:absolute; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 40%, var(--copper-tint) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 70%, var(--copper-tint) 0%, transparent 50%);
+  opacity:.7;
+}
+[data-theme="dark"] .cta-pixel-grid {
+  background: linear-gradient(180deg, #0a0c10 0%, #0e1016 100%);
+}
+[data-theme="dark"] .cta-pixel-grid::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect x='0' y='0' width='4' height='4' fill='%23f38d74' opacity='.1'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .cta-pixel-grid::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23e2745a' opacity='.14'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .cta-pixel-grid-glow {
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(226, 116, 90, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 70%, rgba(226, 116, 90, 0.06) 0%, transparent 50%);
+}
+.cta-content-wrapper { position:relative; z-index:1; }
+.cta-kicker {
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600;
+  color:var(--copper); letter-spacing:1.5px; margin-bottom:18px; text-transform:uppercase;
+}
+.cta-title { margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05; }
+.cta-dashed-highlight {
+  text-decoration:underline; text-decoration-color:var(--copper); text-underline-offset:6px;
+  text-decoration-thickness:2px; text-decoration-style:dashed;
+}
+.cta-desc { max-width:540px; margin:0 auto 28px; font-size:17px; line-height:1.65; color:var(--muted); }
+.cta-form-new { display:flex; gap:12px; max-width:480px; margin:0 auto; }
+.cta-input-new {
+  flex:1; min-width:220px; padding:14px 22px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  font-family:'Inter',sans-serif; font-size:15px; outline:none;
+  transition:border-color .25s var(--ease),box-shadow .25s var(--ease);
+}
+.cta-input-new:focus { border-color:var(--copper); box-shadow:0 0 0 3px rgba(187,106,49,.14); }
+[data-theme="dark"] .cta-input-new { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:#faf6ec; }
+[data-theme="dark"] .cta-input-new:focus { border-color:var(--copper-br); box-shadow:0 0 0 3px rgba(242,169,85,.14); }
+.cta-footer-note { margin-top:20px; font-size:13px; color:var(--faint); }
+
+/* ============ FOOTER ============ */
+.aeg-footer {
+  position:relative; overflow:hidden;
+  padding-top:80px; padding-bottom:40px;
+  background:rgba(235,227,210,.45);
+  border-top:1px solid var(--line-soft);
+  color:var(--ink);
+}
+[data-theme="dark"] .aeg-footer { background:#090a0f; border-top:1px solid var(--line); }
+.footer-top-row { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:40px; margin-bottom:60px; position:relative; z-index:1; }
+.footer-brand-col { max-width:360px; }
+.footer-brand-tagline { font-size:15px; line-height:1.6; color:var(--muted); margin:16px 0 0; }
+.footer-newsletter-col { width:100%; max-width:360px; }
+.footer-newsletter-label { font-size:14.5px; font-weight:600; color:var(--ink); margin-bottom:12px; }
+.footer-newsletter-input-wrapper {
+  display:flex; align-items:center; width:100%; height:48px; border-radius:999px;
+  padding:0 6px 0 16px; background:#ffffff; border:1px solid var(--line);
+  transition:border-color .25s var(--ease),box-shadow .25s var(--ease);
+}
+[data-theme="dark"] .footer-newsletter-input-wrapper { background:rgba(255,255,255,.03); border-color:rgba(255,255,255,.15); }
+.footer-newsletter-input-wrapper:focus-within { border-color:var(--copper); box-shadow:0 0 0 3px rgba(187,106,49,.14); }
+.footer-newsletter-input {
+  flex:1; height:100%; background:transparent; border:none;
+  font-family:'Inter',sans-serif; font-size:14px; color:var(--ink); outline:none;
+}
+[data-theme="dark"] .footer-newsletter-input { color:#faf6ec; }
+.footer-newsletter-input::placeholder { color:var(--faint); }
+.footer-newsletter-btn {
+  height:38px; padding:0 18px; border-radius:999px; border:none;
+  background:linear-gradient(177deg,var(--copper-br),var(--copper));
+  color:#fff; font-weight:590; cursor:pointer; font-size:13px;
+  transition:all .3s var(--ease);
+}
+.footer-newsletter-btn:hover { padding:0 24px; }
+.footer-newsletter-terms { font-size:12px; color:var(--faint); margin-top:10px; }
+.footer-columns-row { display:grid; grid-template-columns:repeat(4,1fr); gap:40px; position:relative; z-index:1; margin-bottom:50px; }
+.footer-col-title { font-size:13px; font-weight:600; color:var(--ink); margin-bottom:16px; text-transform:uppercase; letter-spacing:0.8px; }
+.footer-link { display:block; color:var(--muted); text-decoration:none; font-size:14px; margin-bottom:8px; transition:color .2s var(--ease); }
+.footer-link:hover { color:var(--ink); }
+.footer-divider { border-top:1px solid var(--line); margin-bottom:28px; position:relative; z-index:1; }
+.footer-bottom-row { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; position:relative; z-index:1; }
+.footer-copyright { font-size:13.5px; color:var(--faint); }
+.footer-legal-links { display:flex; gap:24px; }
+.footer-legal-link { font-size:13px; color:var(--faint); text-decoration:none; transition:color .2s var(--ease); }
+.footer-legal-link:hover { color:var(--ink); }
+.footer-watermark {
+  position:absolute; bottom:-40px; right:-20px;
+  font-family:'Bricolage Grotesque',sans-serif; font-size:180px; font-weight:800;
+  color:var(--ink); opacity:.015; pointer-events:none; z-index:0;
+  white-space:nowrap; line-height:1; letter-spacing:-.04em;
+}
+[data-theme="dark"] .footer-watermark { opacity:.03; color:#fff; }
+
+/* ============ BRAND MARQUEE ============ */
+.brand-marquee {
+  margin-top:48px; overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+}
+.brand-track { display:flex; gap:48px; width:max-content; animation:marquee 38s linear infinite; }
+.brand-item { font-size:14px; font-weight:600; color:var(--faint); white-space:nowrap; }
+[data-theme="dark"] .brand-item { color:rgba(255,255,255,.25); }
+
+/* ============ SCROLL REVEAL ============ */
+.sr { opacity:0; transform:translateY(24px); }
+.sr-in { opacity:1; transform:translateY(0); transition:opacity 600ms var(--ease), transform 600ms var(--ease); }
+
+/* ============ TEXTS REVEAL ============ */
+.t-stagger { --stagger-delay:80ms; --stagger-blur:8px; }
+.t-stagger .t-line { opacity:0; filter:blur(var(--stagger-blur)); transform:translateY(12px); }
+.t-stagger.has-revealed .t-line {
+  opacity:1; filter:blur(0); transform:translateY(0);
+  transition:opacity 500ms ease-in-out, filter 500ms ease-in-out, transform 500ms var(--ease);
+}
+.t-stagger.has-revealed .t-line:nth-child(1) { transition-delay:0ms; }
+.t-stagger.has-revealed .t-line:nth-child(2) { transition-delay:80ms; }
+.t-stagger.has-revealed .t-line:nth-child(3) { transition-delay:160ms; }
+.t-stagger.has-revealed .t-line:nth-child(4) { transition-delay:240ms; }
+
+/* ============ ANNOUNCEMENT BANNER ============ */
+.aeg-banner {
+  background:linear-gradient(90deg, var(--copper-deep) 0%, var(--copper) 100%);
+  color:#ffffff; text-align:center; padding:10px 20px;
+  font-size:13px; font-weight:500; position:relative; overflow:hidden;
+  transition:height 350ms var(--ease),padding 350ms var(--ease),opacity 350ms var(--ease);
+}
+.aeg-banner a { color:#ffffff; font-weight:600; text-decoration:underline; }
+.banner-close-btn {
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  background:rgba(255,255,255,.15); border:none; color:#fff;
+  width:26px; height:26px; border-radius:50%; cursor:pointer;
+  font-size:14px; display:flex; align-items:center; justify-content:center;
+  transition:background .2s;
+}
+.banner-close-btn:hover { background:rgba(255,255,255,.25); }
+.aeg-banner.is-hidden { height:0 !important; padding-top:0; padding-bottom:0; opacity:0; }
+.aeg-announcement-dismissed .aeg-banner { display:none; }
+
+/* ============ PRICING CARDS ============ */
+.price-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; align-items:stretch; }
+.price-card { background:var(--surface); border:1px solid var(--line); border-radius:0; padding:44px 36px; box-shadow:var(--shadow-card); transition:box-shadow .3s var(--ease),transform .3s var(--ease); }
+.price-card:hover { box-shadow:var(--shadow-lift); transform:translateY(-2px); }
+.price-card.featured { border-color:var(--copper) !important; box-shadow:0 1px 2px rgba(22,20,14,.04),0 0 0 1px rgba(187,106,49,.12),0 26px 50px -26px rgba(155,83,29,.34); }
+.price-amount { font-family:'Bricolage Grotesque','Inter',sans-serif; font-size:52px; font-weight:700; line-height:1; color:var(--ink); }
+.price-period { font-size:14px; color:var(--faint); }
+.price-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+.price-list li { display:flex; align-items:flex-start; gap:10px; font-size:14px; color:var(--muted); line-height:1.5; }
+
+/* ============ FLOW CHAIN ============ */
+.flow-chain { display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; padding:24px 0; }
+.flow-step { font-size:13px; font-weight:500; color:var(--muted); padding:10px 18px; border:1px solid var(--line); border-radius:6px; background:var(--surface); white-space:nowrap; }
+.flow-arrow { color:var(--copper); font-weight:700; font-size:18px; }
+
+/* ============ LEDGER TABLE ============ */
+.ledger-table { width:100%; border-collapse:collapse; font-size:13px; }
+.ledger-table th { text-align:left; padding:12px 16px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--faint); border-bottom:2px solid var(--line); }
+.ledger-table td { padding:12px 16px; border-bottom:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); }
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion:reduce) {
+  .sr { opacity:1; transform:none; }
+  .t-stagger .t-line { opacity:1; filter:none; transform:none; }
+  .brand-track { animation:none; }
+  *,*::before,*::after { animation-duration:0ms !important; transition-duration:0ms !important; }
+}
+
+/* ============ KEYFRAMES ============ */
+@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+@keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }
+
+/* ============ MOBILE ============ */
+@media (max-width:768px) {
+  .aeg-wrap { padding-left:20px; padding-right:20px; }
+  .aeg-section { padding-top:64px; padding-bottom:64px; }
+  .nav-links { display:none; }
+  .mobile-menu-toggle { display:flex; }
+  .grid-2 { grid-template-columns:1fr; }
+  .price-grid { grid-template-columns:1fr; }
+  .cta-form-new { flex-direction:column; }
+  .cta-section-new { padding:64px 0; }
+  .footer-columns-row { grid-template-columns:1fr 1fr; gap:32px; }
+  .footer-top-row { flex-direction:column; gap:32px; }
+  .footer-bottom-row { flex-direction:column; text-align:center; gap:12px; }
+  .footer-legal-links { justify-content:center; }
+  .footer-watermark { font-size:100px; bottom:-20px; right:-10px; }
+  .flow-chain { flex-direction:column; gap:8px; }
+  .flow-arrow { transform:rotate(90deg); }
+  .approval-visual-col { border-left:none; border-top:1px solid rgba(255,255,255,.07); padding:32px; }
+  .cmp th, .cmp td { padding:12px 8px; font-size:13px; }
+  .cmp { min-width:600px; }
+  .ledger-table { min-width:500px; display:block; overflow-x:auto; }
+  .code-block { overflow-x:auto; }
+  body { overflow-x:hidden; }
+  .aeg-page { overflow-x:hidden; }
+}
+@media (max-width:480px) {
+  .footer-columns-row { grid-template-columns:1fr; }
+}
+</style>
+</helmet>
+
+<div class="aeg-page">
+
+<!-- ==================== ANNOUNCEMENT BANNER ==================== -->
+<div id="announcementBanner" class="aeg-banner">
+  We're live on YC W26 &middot; <a href="#cta">Meet the founders &rarr;</a>
+  <button id="closeBannerBtn" class="banner-close-btn" aria-label="Close announcement">&times;</button>
+</div>
+
+<!-- ==================== NAV ==================== -->
+<nav class="aeg-nav">
+  <div class="nav-inner">
+    <a href="#top" class="nav-brand">AgentGrid</a>
+    <div class="nav-links">
+      <a href="#primitives" class="nav-link">Product</a>
+      <a href="#surface" class="nav-link">Docs</a>
+      <a href="#pricing" class="nav-link">Pricing</a>
+      <a href="javascript:void(0)" class="nav-link">Blog</a>
+      <a href="#cta" class="btn btn-copper" style="padding:8px 18px; font-size:13px;">Request access</a>
+      <button id="themeToggle" class="theme-toggle" type="button" title="Toggle theme" aria-label="Toggle theme">
+        <span class="theme-icon-light">&#9788;</span>
+        <span class="theme-icon-dark">&#9790;</span>
+      </button>
+    </div>
+    <button id="mobileMenuToggle" class="mobile-menu-toggle" type="button" aria-label="Menu" aria-expanded="false">
+      <span class="icon-menu">&#9776;</span>
+      <span class="icon-close" style="display:none;">&times;</span>
+    </button>
+  </div>
+</nav>
+<div id="mobileMenu" class="mobile-menu">
+  <a href="#primitives" class="mobile-nav-link">Product</a>
+  <a href="#surface" class="mobile-nav-link">Docs</a>
+  <a href="#pricing" class="mobile-nav-link">Pricing</a>
+  <a href="javascript:void(0)" class="mobile-nav-link">Blog</a>
+  <a href="#cta" class="btn btn-copper" style="justify-content:center;">Request access</a>
+</div>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero-bg-container">
+  <header id="top" class="aeg-wrap" style="padding-top:78px; padding-bottom:64px; position:relative; z-index:1;">
+    <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:48px; max-width:800px; margin:0 auto; width:100%;">
+      <div class="t-stagger" id="hero-stagger" style="display:flex; flex-direction:column; align-items:center; text-align:center; max-width:680px; margin:0 auto; width:100%;">
+        <div class="t-line">
+          <span class="pill-badge" style="margin-bottom:26px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok); display:inline-block;"></span>
+            <span>YC W26 &middot; Open beta</span>
+          </span>
+        </div>
+        <div class="t-line">
+          <h1 class="display" style="margin:0; font-size:clamp(40px,5.2vw,64px); line-height:1.03;">
+            Identity for AI agents.<br>
+            <span class="accent-it">Not yours &mdash; theirs.</span>
+          </h1>
+        </div>
+        <div class="t-line">
+          <p style="max-width:620px; margin:24px auto 0; font-size:clamp(16px,1.5vw,18px); line-height:1.68; color:var(--muted);">
+            The control plane that gives an autonomous agent its own credentials, inbox, phone, cards, and compute &mdash; governed by cryptographic mandates you sign, revocable with a single key.
+          </p>
+        </div>
+        <div class="t-line">
+          <div style="display:flex; gap:24px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:36px;">
+            <span style="color:var(--muted); font-size:14.5px; font-weight:590;">&lt;1 min setup</span>
+            <span style="color:var(--muted); font-size:14.5px; font-weight:590;">Zero-config MCP</span>
+            <span style="color:var(--muted); font-size:14.5px; font-weight:590;">Open source core</span>
+            <a href="#cta" class="btn-cta-primary">Get started now</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="brand-marquee" style="width:100%; max-width:960px;">
+        <p style="font-size:12px; color:var(--faint); text-align:center; margin:0 0 12px; text-transform:uppercase; letter-spacing:2px;">Built on infrastructure you already trust</p>
+        <div class="brand-track">
+          <span class="brand-item">Stripe</span>
+          <span class="brand-item">Twilio</span>
+          <span class="brand-item">Cloudflare</span>
+          <span class="brand-item">Vercel</span>
+          <span class="brand-item">Postgres</span>
+          <span class="brand-item">AWS KMS</span>
+          <span class="brand-item">Firecracker</span>
+          <span class="brand-item">Lithic</span>
+          <span class="brand-item">Playwright</span>
+          <span class="brand-item">Stripe</span>
+          <span class="brand-item">Twilio</span>
+          <span class="brand-item">Cloudflare</span>
+          <span class="brand-item">Vercel</span>
+          <span class="brand-item">Postgres</span>
+          <span class="brand-item">AWS KMS</span>
+          <span class="brand-item">Firecracker</span>
+          <span class="brand-item">Lithic</span>
+          <span class="brand-item">Playwright</span>
+        </div>
+      </div>
+    </div>
+  </header>
+</div>
+
+<!-- ==================== 01 — THE SHIFT ==================== -->
+<section id="how" class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">01</span><span class="eyebrow-label">The shift</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">Don't lend your agent a <span class="accent-it">borrowed passport.</span></h2>
+  <p style="max-width:540px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 50px;">
+    Every other approach hands the agent <em>your</em> credentials &mdash; it logs in as you. AgentGrid gives it an identity of its own, and lets you sign exactly what it may do.
+  </p>
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="font-weight:700; font-size:15px; color:var(--bad); margin:0 0 20px; text-transform:uppercase; letter-spacing:1px;">Without AgentGrid</h3>
+      <ul style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px; font-size:14px; color:var(--muted); line-height:1.5;">
+        <li>&mdash; You share your Stripe API key</li>
+        <li>&mdash; The agent logs in as <strong>you</strong></li>
+        <li>&mdash; No cryptographically-verifiable audit trail</li>
+        <li>&mdash; Revocation means rotating every secret</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:3px solid var(--copper);">
+      <h3 style="font-weight:700; font-size:15px; color:var(--ok); margin:0 0 20px; text-transform:uppercase; letter-spacing:1px;">With AgentGrid</h3>
+      <ul style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px; font-size:14px; color:var(--muted); line-height:1.5;">
+        <li>&#10003; The agent gets its own virtual card</li>
+        <li>&#10003; Its own DID-anchored identity</li>
+        <li>&#10003; Every call hash-chained to a ledger</li>
+        <li>&#10003; Revocation is one key turn</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 02 — FIVE PRIMITIVES ==================== -->
+<section id="primitives" class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">02</span><span class="eyebrow-label">The Five Primitives</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">Engineered for absolute <span class="accent-it">delegation.</span></h2>
+  <p style="max-width:540px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 50px;">
+    Capability is defined at the control plane level &mdash; not per-site. AgentGrid runs your agents through five cryptographic, sandboxed primitives.
+  </p>
+
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+    <div class="card card-hover" style="padding:28px 24px;">
+      <div style="font-size:10px; font-weight:600; text-transform:uppercase; color:var(--faint); margin-bottom:8px; letter-spacing:1.2px;">01 &middot; Durable Identity</div>
+      <h3 style="font-weight:700; font-size:18px; color:var(--ink); margin:0 0 12px;">DID-Anchored Passports</h3>
+      <p style="font-size:13px; color:var(--muted); line-height:1.55; margin:0 0 16px;">Each agent gets a W3C Decentralized Identifier, cryptographically bound to a signing keypair generated in a secure enclave.</p>
+      <div class="code-block" style="font-size:11px; padding:12px 16px;">
+        <span class="cm">DID:</span> <span class="kw">did:key:z6MkuYt9h...</span><br>
+        <span class="cm">ALGORITHM:</span> Ed25519<br>
+        <span class="cm">STATUS:</span> <span class="ok">ACTIVE</span>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="padding:28px 24px;">
+      <div style="font-size:10px; font-weight:600; text-transform:uppercase; color:var(--faint); margin-bottom:8px; letter-spacing:1.2px;">02 &middot; Fine-grained Control</div>
+      <h3 style="font-weight:700; font-size:18px; color:var(--ink); margin:0 0 12px;">Scoped Mandates</h3>
+      <p style="font-size:13px; color:var(--muted); line-height:1.55; margin:0 0 16px;">Sign cryptographic policy documents that bound every dimension: spend limits, trust domains, tool allowlists, and session lifetimes.</p>
+      <div class="code-block" style="font-size:11px; padding:12px 16px;">
+        <span class="cm">trust_domain:</span> *.stripe.com<br>
+        <span class="cm">session_limit:</span> $100.00 max<br>
+        <span class="cm">expires:</span> <span class="kw">23h remaining</span>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="padding:28px 24px;">
+      <div style="font-size:10px; font-weight:600; text-transform:uppercase; color:var(--faint); margin-bottom:8px; letter-spacing:1.2px;">03 &middot; Human Consent</div>
+      <h3 style="font-weight:700; font-size:18px; color:var(--ink); margin:0 0 12px;">WebAuthn Approvals</h3>
+      <p style="font-size:13px; color:var(--muted); line-height:1.55; margin:0 0 16px;">Every high-risk action requires on-device biometric confirmation. Fails closed on timeout &mdash; no blank cheques.</p>
+      <div class="code-block" style="font-size:11px; padding:12px 16px;">
+        <span class="cm">METHOD:</span> Passkey (Face ID / Touch ID)<br>
+        <span class="cm">SIGNATURE:</span> <span class="ok">&#10003; valid</span><br>
+        <span class="cm">TIMEOUT:</span> 60s &middot; fails closed
+      </div>
+    </div>
+
+    <div class="card card-hover" style="grid-column:span 2; padding:0; display:flex; overflow:hidden;">
+      <div style="flex:1; padding:28px 24px; display:flex; flex-direction:column; justify-content:space-between; background:linear-gradient(180deg,#181513 0%,#2f1f15 100%); color:#faf6ec;">
+        <div>
+          <div style="font-size:10px; font-weight:600; text-transform:uppercase; color:rgba(255,255,255,.6); margin-bottom:8px; letter-spacing:1.2px;">04 &middot; Cloud Sandbox</div>
+          <h3 style="font-weight:700; font-size:19px; color:#fff; margin:0 0 12px;">Governed Compute</h3>
+          <p style="margin:0; font-size:12.5px; line-height:1.5; color:rgba(255,255,255,.72);">Build, test, and deploy software inside Firecracker microVMs with dedicated subdomain leases.</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:8.5px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); padding:3px 8px;">Firecracker VM</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:8.5px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); padding:3px 8px;">Dedicated Leases</span>
+        </div>
+      </div>
+      <div style="width:50%; background:#0c0a09; display:flex; flex-direction:column; justify-content:center; padding:20px;">
+        <div style="display:flex; gap:5px; padding:0 0 12px;">
+          <span style="width:6px; height:6px; background:#ff5f56; border-radius:50%;"></span>
+          <span style="width:6px; height:6px; background:#ffbd2e; border-radius:50%;"></span>
+          <span style="width:6px; height:6px; background:#27c93f; border-radius:50%;"></span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.8; color:rgba(255,255,255,.8);">
+          <div style="color:rgba(255,255,255,.3);">$ agentgrid deploy</div>
+          <div style="color:var(--ok);">&#10003; VM running (32ms)</div>
+          <div style="color:var(--copper-br);">&rarr; a7x.agents.dev</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="padding:0; display:flex; overflow:hidden; flex-direction:row;">
+      <div style="flex:1; padding:28px 24px; display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="font-size:10px; font-weight:600; text-transform:uppercase; color:var(--faint); margin-bottom:8px; letter-spacing:1.2px;">05 &middot; Provable Compliance</div>
+          <h3 style="font-weight:700; font-size:18px; color:var(--ink); margin:0 0 12px;">Signed Audit Ledger</h3>
+          <p style="margin:0; font-size:12.5px; line-height:1.5; color:var(--muted);">Every tool call and approval is signed on-device and logged to a tamper-evident, hash-chained ledger.</p>
+        </div>
+        <div style="margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--ok); font-weight:600;">&#10003; Chain verified</div>
+      </div>
+      <div style="width:50%; background:#0c0a09; display:flex; flex-direction:column; justify-content:center; padding:20px; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.6; color:rgba(255,255,255,.7);">
+        <span style="color:var(--copper-br);">"seq"</span>: <span style="color:#fff;">2042</span><br>
+        <span style="color:var(--copper-br);">"action"</span>: <span style="color:var(--ok);">"pay"</span><br>
+        <span style="color:var(--copper-br);">"sig"</span>: <span style="color:var(--ok);">"0x9e2b..."</span><br>
+        <span style="color:var(--copper-br);">"prev"</span>: <span style="color:rgba(255,255,255,.3);">"0x8a1c..."</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 03 — MCP TOOL SURFACE ==================== -->
+<section id="surface" class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">03</span><span class="eyebrow-label">The tool surface</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">One MCP server. <span style="color:var(--muted);">Eight tools.</span></h2>
+  <p style="max-width:540px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 50px;">
+    Drop AgentGrid into Claude or any MCP-compatible agent. The agent sees only these tools &mdash; behind each one sits the policy engine, the vault, and the audit ledger.
+  </p>
+  <div class="grid-2" style="align-items:stretch;">
+    <div class="panel-dark code-fade" style="position:relative;">
+      <div class="z" style="display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid rgba(255,255,255,.07);">
+        <span class="win-dots"><span></span><span></span><span></span></span>
+        <span class="mono" style="font-size:12px; color:rgba(255,255,255,.3);">agentgrid &middot; tools</span>
+      </div>
+      <pre class="mono z" style="margin:0; padding:20px 24px; font-size:12px; line-height:2; color:rgba(255,255,255,.55); white-space:pre;"><span style="color:var(--copper-br);">browse</span>(action, target)         <span style="color:rgba(255,255,255,.35);">// drive the browser</span>
+<span style="color:var(--copper-br);">comms.send</span>(channel, to, body)  <span style="color:rgba(255,255,255,.35);">// email / sms</span>
+<span style="color:var(--copper-br);">comms.verify</span>(sess)             <span style="color:rgba(255,255,255,.35);">// read OTP / link</span>
+<span style="color:var(--copper-br);">pay</span>(amount, merchant, card?)   <span style="color:rgba(255,255,255,.35);">// virtual card</span>
+<span style="color:var(--copper-br);">deploy</span>(project, files, env)    <span style="color:rgba(255,255,255,.35);">// build &amp; host</span>
+<span style="color:var(--copper-br);">provision</span>(kind)                <span style="color:rgba(255,255,255,.35);">// new inbox/phone/card</span>
+<span style="color:var(--copper-br);">vault.use</span>(handle, ...)         <span style="color:rgba(255,255,255,.35);">// use, never read</span>
+<span style="color:var(--copper-br);">approve</span>(action, ctx)           <span style="color:rgba(255,255,255,.35);">// ask the human</span></pre>
+    </div>
+    <div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="padding:24px 28px 18px;">
+        <span style="font-weight:600; font-size:16px; color:var(--ink);">Connect in 30 seconds</span>
+        <p style="margin:8px 0 0; font-size:14px; line-height:1.6; color:var(--muted);">Add the server to your MCP client and the tools appear in the agent automatically.</p>
+      </div>
+      <div class="panel-dark" style="flex:1; display:flex;">
+        <pre class="mono z" style="margin:0; padding:20px 22px; font-size:12px; line-height:1.9; color:rgba(255,255,255,.55); white-space:pre;"><span style="color:rgba(255,255,255,.3);">$</span> agentgrid mcp add --client claude
+<span style="color:var(--ok);">&#10003;</span> passport minted  <span style="color:rgba(255,255,255,.35);">did:key:z6Mk...</span>
+<span style="color:var(--ok);">&#10003;</span> mandate signed   <span style="color:rgba(255,255,255,.35);">starter &middot; $50/mo</span>
+<span style="color:var(--ok);">&#10003;</span> server connected
+
+<span style="color:rgba(255,255,255,.3);"># claude_desktop_config.json</span>
+{ <span style="color:var(--copper-br);">"agentgrid"</span>: { <span style="color:var(--copper-br);">"command"</span>: <span style="color:#5fc189;">"agentgrid"</span> } }</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 04 — POLICY GRID ==================== -->
+<section id="policy" class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">04</span><span class="eyebrow-label">Platform governing</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">Everything you need to govern <span class="cta-dashed-highlight">AI action.</span></h2>
+  <p style="max-width:580px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 44px;">Track, analyze, and authorize every request made by your autonomous agents across hosts, tools, and networks in real time.</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+    <div class="card" style="grid-column:span 2;">
+      <h3 style="font-weight:700; font-size:18px; margin:0 0 8px;">Every node <span style="color:var(--muted);">in any cloud</span></h3>
+      <p style="font-size:14px; color:var(--muted); margin:0 0 20px;">Govern execution globally across private microVMs, secure credentials enclaves, and AWS KMS boundary environments.</p>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);">
+        <span style="color:var(--copper); font-weight:600;">us-east-1</span> AWS KMS
+        <span style="color:var(--copper); font-weight:600;">eu-central-1</span> microVM
+        <span style="color:var(--copper); font-weight:600;">eu-west-1</span> Vault
+        <span style="color:var(--copper); font-weight:600;">ap-northeast-1</span> KMS
+        <span style="color:var(--copper); font-weight:600;">sa-east-1</span> compute
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-weight:700; font-size:18px; margin:0 0 8px;">Govern <span style="color:var(--muted);">any agent</span></h3>
+      <p style="font-size:14px; color:var(--muted); margin:0 0 20px;">Govern agent behavior regardless of client, tool surface, or orchestration model.</p>
+      <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line);"><span>CrewAI</span> <span style="color:var(--ok); font-weight:600;">&#10003; Governed</span></div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line);"><span>LangChain</span> <span style="color:var(--ok); font-weight:600;">&#10003; Governed</span></div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0;"><span>Claude Desktop</span> <span style="color:var(--ok); font-weight:600;">&#10003; Governed</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-weight:700; font-size:18px; margin:0 0 8px;">Connect <span style="color:var(--muted);">your tools</span></h3>
+      <p style="font-size:14px; color:var(--muted); margin:0 0 20px;">Bind third-party credentials securely behind sandboxed API surfaces.</p>
+      <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);">
+          <div><strong>Stripe Payments</strong><br><span style="color:var(--faint); font-size:12px;">Process virtual cards</span></div>
+          <span style="color:var(--copper); font-weight:700; font-size:16px;">+</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+          <div><strong>Twilio SMS</strong><br><span style="color:var(--faint); font-size:12px;">Route verification codes</span></div>
+          <span style="color:var(--copper); font-weight:700; font-size:16px;">+</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-weight:700; font-size:18px; margin:0 0 8px;">Biometric <span style="color:var(--muted);">consent</span></h3>
+      <p style="font-size:14px; color:var(--muted); margin:0 0 16px;">Fails closed on timeouts. Authorizations require on-device biometric check signed by your key.</p>
+      <div style="text-align:center; padding:16px 0;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--ok); font-weight:600;">&#9679; Passkey Ready</div>
+        <div style="font-size:12px; color:var(--faint); margin-top:4px;">Face ID / Touch ID / Windows Hello</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-weight:700; font-size:18px; margin:0 0 8px;">Durable <span style="color:var(--muted);">mandates ledger</span></h3>
+      <p style="font-size:14px; color:var(--muted); margin:0 0 16px;">Live-audited transaction evaluation and cryptographic policy assertion verification.</p>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.8; color:var(--muted);">
+        <span>saas-spend-limit.json &mdash; <span style="color:var(--ok); font-weight:600;">ACTIVE</span></span><br>
+        <span>mcp-tools-allowlist.json &mdash; <span style="color:var(--ok); font-weight:600;">ACTIVE</span></span><br>
+        <span>eval: {{ policyReq }}</span> &mdash; <span style="color:{{ policyColor }}; font-weight:700;">{{ policyVerdict }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== THE HUMAN HOLDS THE PEN ==================== -->
+<section class="aeg-section aeg-wrap">
+  <div class="panel-dark" style="padding:0;">
+    <div class="grid-2 z" style="display:grid; grid-template-columns:1.1fr .9fr; gap:0;">
+      <div style="padding:52px 44px;">
+        <span class="kicker" style="color:var(--copper-br);">The human holds the pen</span>
+        <h2 class="display" style="margin:16px 0 16px; font-size:clamp(33px,4.4vw,52px); line-height:1.06; color:#faf6ec;">Interrupted only when it <span style="color:var(--copper-br);">genuinely matters.</span></h2>
+        <p style="max-width:440px; margin:0 0 28px; font-size:16px; line-height:1.7; color:rgba(255,255,255,.55);">Routine work runs untouched. When the agent reaches a new payee, a spend over your threshold, or anything irreversible, it pauses and asks &mdash; and your approval is signed on-device, never a blank cheque.</p>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+          <span class="mono" style="font-size:12.5px; color:rgba(255,255,255,.6); padding:7px 13px; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);">Always-allow learns your boundaries</span>
+          <span class="mono" style="font-size:12.5px; color:rgba(255,255,255,.6); padding:7px 13px; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);">Fails closed on timeout</span>
+        </div>
+      </div>
+      <div class="approval-visual-col">
+        <div class="approval-card">
+          <div style="display:flex; align-items:center; gap:9px; margin-bottom:16px;">
+            <span style="font-weight:700; font-size:13px; color:var(--ink);">AgentGrid</span>
+            <span class="mono" style="margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; color:var(--warn); padding:3px 9px; border-radius:999px; background:rgba(194,132,42,.12); border:1px solid rgba(194,132,42,.25);">
+              <span style="width:5px; height:5px; background:var(--warn); border-radius:50%;"></span>STEP-UP
+            </span>
+          </div>
+          <p style="margin:0 0 6px; font-size:14.5px; line-height:1.5; color:var(--ink);">Agent <b>Research</b> wants to pay <b style="color:var(--copper-deep);">$840.00</b> to <b>Acme Data Inc</b></p>
+          <p style="margin:0 0 18px; font-size:12.5px; color:var(--muted);">category: data &middot; <span style="color:var(--warn);">new merchant</span> &middot; mnd_01H...</p>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-copper" style="flex:1; justify-content:center; padding:10px;">Approve</button>
+            <button class="btn btn-ghost" style="flex:none; padding:10px 16px;">Deny</button>
+          </div>
+          <p style="margin:12px 0 0; text-align:center; font-size:11px; color:var(--faint);">Signed with your passkey &middot; on-device</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 05 — AUDIT LEDGER ==================== -->
+<section id="ledger" class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">05</span><span class="eyebrow-label">Audit ledger</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">Every action, signed <span style="color:var(--muted);">and chained.</span></h2>
+  <p style="max-width:520px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 50px;">A tamper-evident ledger records every decision &mdash; hash-chained, so history can't be quietly rewritten.</p>
+
+  <div class="panel-dark">
+    <div class="z" style="display:flex; align-items:center; gap:10px; padding:15px 20px; border-bottom:1px solid rgba(255,255,255,.07);">
+      <span class="win-dots"><span></span><span></span><span></span></span>
+      <span class="mono" style="font-size:12.5px; color:rgba(255,255,255,.3);">agentgrid &middot; audit ledger</span>
+      <span class="mono" style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ok);">
+        <span style="width:6px; height:6px; background:var(--ok); box-shadow:0 0 7px var(--ok); animation:pulse-dot 1.6s ease-in-out infinite;"></span>live
+      </span>
+    </div>
+    <div class="mono z" style="padding:6px 0; font-size:13px; min-height:284px;">
+      <div class="row-led" style="display:grid; grid-template-columns:54px 78px 1fr auto 78px; align-items:center; gap:10px; padding:9px 20px; border-bottom:1px solid rgba(255,255,255,.035);">
+        <span style="color:rgba(255,255,255,.16);">#2047</span>
+        <span style="color:rgba(255,255,255,.28); font-size:11.5px;">policy</span>
+        <span style="color:rgba(255,255,255,.62);">pay $5.00 → vercel · saas</span>
+        <span style="color:var(--ok); font-weight:500; text-align:right;">ALLOW</span>
+        <span style="color:rgba(255,255,255,.12); text-align:right;">0xa3f2c1...</span>
+      </div>
+      <div class="row-led" style="display:grid; grid-template-columns:54px 78px 1fr auto 78px; align-items:center; gap:10px; padding:9px 20px; border-bottom:1px solid rgba(255,255,255,.035);">
+        <span style="color:rgba(255,255,255,.16);">#2046</span>
+        <span style="color:rgba(255,255,255,.28); font-size:11.5px;">action</span>
+        <span style="color:rgba(255,255,255,.62);">deploy thing.agents.host</span>
+        <span style="color:var(--info); font-weight:500; text-align:right;">NOTICE</span>
+        <span style="color:rgba(255,255,255,.12); text-align:right;">0x8d4b9e...</span>
+      </div>
+      <div class="row-led" style="display:grid; grid-template-columns:54px 78px 1fr auto 78px; align-items:center; gap:10px; padding:9px 20px; border-bottom:1px solid rgba(255,255,255,.035);">
+        <span style="color:rgba(255,255,255,.16);">#2045</span>
+        <span style="color:rgba(255,255,255,.28); font-size:11.5px;">policy</span>
+        <span style="color:rgba(255,255,255,.62);">pay $840 → acme data · new merchant</span>
+        <span style="color:var(--warn); font-weight:500; text-align:right;">STEP-UP</span>
+        <span style="color:rgba(255,255,255,.12); text-align:right;">0x7c3a1f...</span>
+      </div>
+      <div class="row-led" style="display:grid; grid-template-columns:54px 78px 1fr auto 78px; align-items:center; gap:10px; padding:9px 20px; border-bottom:1px solid rgba(255,255,255,.035);">
+        <span style="color:rgba(255,255,255,.16);">#2044</span>
+        <span style="color:rgba(255,255,255,.28); font-size:11.5px;">approval</span>
+        <span style="color:rgba(255,255,255,.62);">operator signed envelope</span>
+        <span style="color:var(--ok); font-weight:500; text-align:right;">✓</span>
+        <span style="color:rgba(255,255,255,.12); text-align:right;">0x6b9d2e...</span>
+      </div>
+      <div class="row-led" style="display:grid; grid-template-columns:54px 78px 1fr auto 78px; align-items:center; gap:10px; padding:9px 20px; border-bottom:1px solid rgba(255,255,255,.035);">
+        <span style="color:rgba(255,255,255,.16);">#2043</span>
+        <span style="color:rgba(255,255,255,.28); font-size:11.5px;">cred_use</span>
+        <span style="color:rgba(255,255,255,.62);">vault → github_agent</span>
+        <span style="color:rgba(255,255,255,.28); text-align:right;">-</span>
+        <span style="color:rgba(255,255,255,.12); text-align:right;">0x5a8c3d...</span>
+      </div>
+      <div class="row-led" style="display:grid; grid-template-columns:54px 78px 1fr auto 78px; align-items:center; gap:10px; padding:9px 20px; border-bottom:1px solid rgba(255,255,255,.035);">
+        <span style="color:rgba(255,255,255,.16);">#2042</span>
+        <span style="color:rgba(255,255,255,.28); font-size:11.5px;">policy</span>
+        <span style="color:rgba(255,255,255,.62);">transfer ← operator bank</span>
+        <span style="color:var(--bad); font-weight:500; text-align:right;">DENY</span>
+        <span style="color:rgba(255,255,255,.12); text-align:right;">0x4f1e5a...</span>
+      </div>
+    </div>
+    <div class="mono z" style="display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-top:1px solid rgba(255,255,255,.07); font-size:12px; color:rgba(255,255,255,.3);">
+      <span style="color:var(--ok);">&#10003; chain verified</span>
+      <span>{{ ledgerCount }} entries &middot; prev_hash linked</span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 06 — HOW IT WORKS ==================== -->
+<section class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">06</span><span class="eyebrow-label">How it works</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">Three commands. <span style="color:var(--muted);">Full governance.</span></h2>
+  <p style="max-width:520px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 56px;">From zero to a governed agent in under a minute. Every step produces cryptographic artifacts you can verify offline.</p>
+  <div style="display:flex; flex-direction:column; gap:24px; max-width:700px;">
+    <div class="card" style="display:flex; gap:24px; align-items:flex-start;">
+      <div style="font-family:'Bricolage Grotesque','Inter',sans-serif; font-size:32px; font-weight:700; color:var(--copper); line-height:1; min-width:48px;">01</div>
+      <div>
+        <h3 style="font-weight:700; font-size:16px; margin:0 0 6px;">Mint a passport</h3>
+        <p style="font-size:14px; color:var(--muted); margin:0 0 12px;">Create a cryptographic identity for your agent in one command.</p>
+        <div class="code-block" style="font-size:12px;"><span class="cm">$</span> agentgrid passport create --agent <span class="kw">"Research Agent"</span><br><span class="ok">&#10003;</span> did:key:z6MkuYt9hP8n...AGENT</div>
+      </div>
+    </div>
+    <div class="card" style="display:flex; gap:24px; align-items:flex-start;">
+      <div style="font-family:'Bricolage Grotesque','Inter',sans-serif; font-size:32px; font-weight:700; color:var(--copper); line-height:1; min-width:48px;">02</div>
+      <div>
+        <h3 style="font-weight:700; font-size:16px; margin:0 0 6px;">Sign a mandate</h3>
+        <p style="font-size:14px; color:var(--muted); margin:0 0 12px;">Define exactly what the agent can do &mdash; spend limits, allowed domains, tool access, session duration.</p>
+        <div class="code-block" style="font-size:12px;">{ <span class="kw">"trust_domain"</span>: <span class="ok">"*.stripe.com"</span>, <span class="kw">"session_limit"</span>: <span class="ok">"$100.00"</span>, <span class="kw">"expires"</span>: <span class="ok">"24h"</span> }</div>
+      </div>
+    </div>
+    <div class="card" style="display:flex; gap:24px; align-items:flex-start;">
+      <div style="font-family:'Bricolage Grotesque','Inter',sans-serif; font-size:32px; font-weight:700; color:var(--copper); line-height:1; min-width:48px;">03</div>
+      <div>
+        <h3 style="font-weight:700; font-size:16px; margin:0 0 6px;">Deploy &amp; govern</h3>
+        <p style="font-size:14px; color:var(--muted); margin:0 0 12px;">The agent operates within its mandate. Every action logged. Every anomaly flagged. Revoke with one key.</p>
+        <div class="code-block" style="font-size:12px;"><span class="cm">$</span> agentgrid revoke --agent Research<br><span class="ok">&#10003;</span> Passport revoked &middot; all sessions terminated</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== WHY AGENTGRID ==================== -->
+<section class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">07</span><span class="eyebrow-label">Why AgentGrid</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">The only one built on <span class="accent-it">delegation.</span></h2>
+  <p style="max-width:520px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 44px;">Password managers share your secrets. DIY scripts have no governance. AgentGrid is identity-first, MCP-native, and accountable by construction.</p>
+
+  <div class="card" style="padding:0; overflow-x:auto; position:relative;">
+    <table class="cmp" style="min-width:720px;">
+      <colgroup>
+        <col style="width:32%;">
+        <col style="width:17%;">
+        <col style="width:17%;">
+        <col style="width:17%;">
+        <col style="width:17%;">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Cryptographic agent<br>identity &amp; delegation</th>
+          <th><div class="cmp-logo-wrap"><span class="cmp-logo-text">AliasKit</span></div></th>
+          <th><div class="cmp-logo-wrap"><span class="cmp-logo-text">anima</span></div></th>
+          <th><div class="cmp-logo-wrap"><span class="cmp-logo-text">AgentWallet</span></div></th>
+          <th class="col-highlight"><div class="cmp-logo-wrap"><span class="cmp-logo-text">AgentGrid</span></div></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>DID-Anchored Passports</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td>Cryptographic Mandates</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td>Property-Tested Attenuation</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td>Hash-Chained Audit Ledger</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td>Real-World Primitives</td><td class="cell-yes">&#10003;</td><td class="cell-yes">&#10003;</td><td class="cell-yes">&#10003;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td>On-Device Passkey Approvals</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td>Built-in Compute Primitive</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td>Offline-Verifiable Audits</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+        <tr><td><strong>YC-backed</strong></td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="cell-no">&#10007;</td><td class="col-highlight cell-yes">&#10003;</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== PRICING ==================== -->
+<section id="pricing" class="aeg-section aeg-wrap">
+  <div class="eyebrow"><span class="eyebrow-num">08</span><span class="eyebrow-label">Pricing</span></div>
+  <h2 class="display" style="margin:0 0 16px; font-size:clamp(33px,4.6vw,54px); line-height:1.05;">Founding member <span class="accent-it">access.</span></h2>
+  <p style="max-width:560px; font-size:17px; line-height:1.65; color:var(--muted); margin:0 0 44px;">Every primitive, the policy engine, and the hash-chained ledger &mdash; unlocked for founding members. Backed by Y Combinator.</p>
+  <div class="price-grid">
+    <div class="price-card featured">
+      <div style="font-weight:600; font-size:16px; color:var(--ink); margin-bottom:4px;">Founding Member</div>
+      <div style="display:flex; align-items:baseline; gap:10px; margin:16px 0 4px;">
+        <span class="price-amount">$0</span>
+        <span class="price-period">during beta</span>
+      </div>
+      <p style="font-size:14px; color:var(--muted); line-height:1.55; margin:6px 0 24px;">Locked-in founding member pricing. Bring your first agent online and govern it end-to-end.</p>
+      <div class="hairline" style="margin-bottom:22px;"></div>
+      <ul class="price-list" style="flex:1;">
+        <li>&#10003; All <strong>five</strong> primitives, live</li>
+        <li>&#10003; Multiple agent passports</li>
+        <li>&#10003; Full policy engine &amp; step-up</li>
+        <li>&#10003; Passkey approvals on-device</li>
+        <li>&#10003; Hash-chained audit ledger</li>
+        <li>&#10003; Direct line to the founders</li>
+        <li>&#10003; Founding member pricing, locked in</li>
+      </ul>
+      <a href="#cta" class="btn btn-copper" style="justify-content:center; margin-top:24px;">Request early access &rarr;</a>
+      <p style="margin:14px 0 0; text-align:center; font-size:12px; color:var(--faint);">No credit card &middot; cancel anytime &middot; your data stays yours</p>
+    </div>
+    <div class="price-card">
+      <div style="font-weight:600; font-size:16px; color:var(--ink); margin-bottom:4px;">Enterprise</div>
+      <div style="display:flex; align-items:baseline; gap:10px; margin:16px 0 4px;">
+        <span class="price-amount" style="font-size:40px;">Custom</span>
+      </div>
+      <p style="font-size:14px; color:var(--muted); line-height:1.55; margin:6px 0 24px;">For teams shipping autonomous agents in production. SSO, SLA, on-prem deployment options.</p>
+      <div class="hairline" style="margin-bottom:22px;"></div>
+      <ul class="price-list" style="flex:1;">
+        <li>&#10003; Everything in Founding Member</li>
+        <li>&#10003; Enterprise SSO (SAML/OIDC)</li>
+        <li>&#10003; 99.9% SLA with 24/7 support</li>
+        <li>&#10003; On-premises deployment option</li>
+        <li>&#10003; Dedicated infrastructure</li>
+        <li>&#10003; Custom mandate templates</li>
+        <li>&#10003; Priority feature development</li>
+      </ul>
+      <a href="#cta" class="btn btn-ghost" style="justify-content:center; margin-top:24px;">Talk to us &rarr;</a>
+      <p style="margin:14px 0 0; text-align:center; font-size:12px; color:var(--faint);">We'll design a plan around your team</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CTA: GIVE YOUR AGENT A PASSPORT ==================== -->
+<section id="cta" class="aeg-section aeg-wrap cta-section-new">
+  <div class="cta-pixel-grid"></div>
+  <div class="cta-pixel-grid-glow"></div>
+  <div class="cta-content-wrapper">
+    <div class="cta-kicker">[ get started ]</div>
+    <h2 class="display cta-title">
+      Give your agent <span class="cta-dashed-highlight">a passport.</span>
+    </h2>
+    <p class="cta-desc">
+      YC W26. Building the identity layer for autonomous AI. Drop your email and we'll send your access today.
+    </p>
+    <form onSubmit="{{ onSubmit }}" class="cta-form-new">
+      <input type="email" id="cta-email" name="email" aria-label="Email address" placeholder="you@company.com" class="cta-input-new" required>
+      <button type="submit" class="btn btn-copper" style="font-size:15px; padding:14px 32px;">Get early access &rarr;</button>
+    </form>
+    <p class="cta-footer-note">The human is always the accountable principal. AgentGrid makes the line provable.</p>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="aeg-footer">
+  <div class="aeg-wrap">
+    <div class="footer-top-row">
+      <div class="footer-brand-col">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-weight:800; font-size:20px; letter-spacing:-0.3px; color:var(--ink); text-transform:uppercase; font-family:'Bricolage Grotesque',sans-serif;">AgentGrid</span>
+        </div>
+        <p class="footer-brand-tagline">The control plane for delegated agent identity. Your agent, its own passport.</p>
+      </div>
+      <div class="footer-newsletter-col">
+        <div class="footer-newsletter-label">Subscribe to our newsletter</div>
+        <form class="footer-newsletter-form" onSubmit="{{ onSubmit }}">
+          <div class="footer-newsletter-input-wrapper">
+            <input type="email" name="email" placeholder="Enter your email" class="footer-newsletter-input" required>
+            <button type="submit" class="footer-newsletter-btn" aria-label="Subscribe">Subscribe</button>
+          </div>
+        </form>
+        <div class="footer-newsletter-terms">By subscribing you agree to our terms.</div>
+      </div>
+    </div>
+
+    <div class="footer-columns-row">
+      <div>
+        <div class="footer-col-title">Links</div>
+        <a href="#top" class="footer-link">Home</a>
+        <a href="#how" class="footer-link">Platform</a>
+        <a href="#pricing" class="footer-link">Pricing</a>
+        <a href="#surface" class="footer-link">Docs</a>
+        <a href="javascript:void(0)" class="footer-link">Careers</a>
+        <a href="javascript:void(0)" class="footer-link">Contact us</a>
+      </div>
+      <div>
+        <div class="footer-col-title">Platform</div>
+        <a href="#primitives" class="footer-link">Primitives</a>
+        <a href="#surface" class="footer-link">MCP Surface</a>
+        <a href="#policy" class="footer-link">Policy Engine</a>
+        <a href="#ledger" class="footer-link">Audit Ledger</a>
+        <a href="#pricing" class="footer-link">Why AgentGrid?</a>
+      </div>
+      <div>
+        <div class="footer-col-title">Resources</div>
+        <a href="javascript:void(0)" class="footer-link">Case Studies</a>
+        <a href="javascript:void(0)" class="footer-link">Blog &amp; Insights</a>
+        <a href="javascript:void(0)" class="footer-link">Research</a>
+        <a href="javascript:void(0)" class="footer-link">FAQ</a>
+        <a href="javascript:void(0)" class="footer-link">Status</a>
+      </div>
+      <div>
+        <div class="footer-col-title">Socials</div>
+        <a href="javascript:void(0)" class="footer-link">GitHub</a>
+        <a href="javascript:void(0)" class="footer-link">Discord</a>
+        <a href="javascript:void(0)" class="footer-link">X (Formerly Twitter)</a>
+      </div>
+    </div>
+
+    <div class="footer-divider"></div>
+    <div class="footer-bottom-row">
+      <div class="footer-copyright">&copy; Copyright 2026 AgentGrid.ai &mdash; Backed by Y Combinator</div>
+      <div class="footer-legal-links">
+        <a href="javascript:void(0)" class="footer-legal-link">Terms of Service</a>
+        <a href="javascript:void(0)" class="footer-legal-link">Privacy Policy</a>
+        <a href="javascript:void(0)" class="footer-legal-link">Data Platform TOS</a>
+      </div>
+    </div>
+
+    <div class="footer-watermark">AgentGrid</div>
+  </div>
+</footer>
+
+</div><!-- /.aeg-page -->
+</x-dc>
+
+<!-- ==================== DCLOGIC SCRIPT ==================== -->
+<script type="text/x-dc" data-dc-script data-props='{"motionEnabled":{"editor":"boolean","default":true,"tsType":"boolean"}}'>
+class Component extends DCLogic {
+  tasks = [
+    { text:"Sign up for Linear, confirm the email, deploy our changelog bot.", tools:["browse","email","deploy"], verdict:"ALLOW" },
+    { text:"Pay the $5/mo Postmark invoice from the SaaS mandate.", tools:["pay"], verdict:"ALLOW" },
+    { text:"Research 5 data vendors, start free trials, summarize pricing.", tools:["browse","email"], verdict:"ALLOW" },
+    { text:"Wire $840 to a new vendor - Acme Data Inc.", tools:["pay"], verdict:"STEP-UP" },
+  ];
+  scenarios = [
+    { req:"pay $5.00 → vercel · saas", v:"ALLOW" },
+    { req:"deploy thing.agents.host", v:"NOTICE" },
+    { req:"pay $840 → acme data · new merchant", v:"STEP-UP" },
+    { req:"transfer ← operator's bank", v:"DENY" },
+  ];
+  ledgerPool = [
+    { ev:"policy", act:"pay $5.00 → vercel · saas", v:"ALLOW" },
+    { ev:"action", act:"deploy thing.agents.host", v:"NOTICE" },
+    { ev:"cred_use", act:"vault → github_agent", v:"-" },
+    { ev:"policy", act:"browse linear.app · signup", v:"ALLOW" },
+    { ev:"comms", act:"await_verification · inbox", v:"OK" },
+    { ev:"policy", act:"pay $840 → acme data · new", v:"STEP-UP" },
+    { ev:"approval", act:"operator signed envelope", v:"✓" },
+    { ev:"policy", act:"transfer ← operator bank", v:"DENY" },
+  ];
+  state = {
+    typed:this.tasks[0].text, ti:0, ci:this.tasks[0].text.length, phase:"hold", hold:0, pIdx:0, seq:1046,
+    ledger:this.ledgerPool.slice(0,6).map((e,i)=>({...e, seq:1041+i, hash:this.genHash()})), count:1047,
+  };
+  genHash(){ return "0x"+Math.floor(Math.random()*0xffffffff).toString(16).padStart(8,"0").slice(0,6)+"…"; }
+  colorFor(v){ return { ALLOW:"var(--ok)", NOTICE:"var(--info)", "STEP-UP":"var(--warn)", DENY:"var(--bad)", OK:"var(--ok)", "✓":"var(--ok)", "-":"var(--line)" }[v]||"var(--faint)"; }
+  componentDidMount(){
+    if(!(this.props.motionEnabled??true))return;
+    this.typer=setInterval(()=>this.typeTick(),45);
+    this.pol=setInterval(()=>this.setState(s=>({pIdx:(s.pIdx+1)%this.scenarios.length})),2400);
+    this.led=setInterval(()=>this.pushLedger(),1700);
+    this.revealHero();
+  }
+  revealHero(){ var el=document.getElementById('hero-stagger'); if(!el)return; setTimeout(function(){el.classList.add('has-revealed');},200); }
+  componentWillUnmount(){ clearInterval(this.typer);clearInterval(this.pol);clearInterval(this.led); }
+  typeTick(){
+    this.setState(s=>{
+      const cur=this.tasks[s.ti].text;
+      if(s.phase==="hold"){ if(s.hold<42)return {hold:s.hold+1}; return {phase:"erasing",hold:0}; }
+      if(s.phase==="erasing"){ if(s.ci>0)return {ci:Math.max(0,s.ci-2),typed:cur.slice(0,Math.max(0,s.ci-2))}; const nt=(s.ti+1)%this.tasks.length; return {ti:nt,phase:"typing",ci:0,typed:""}; }
+      if(s.ci<cur.length)return {ci:s.ci+1,typed:cur.slice(0,s.ci+1)}; return {phase:"hold",hold:0};
+    });
+  }
+  pushLedger(){ this.setState(s=>{ const seq=s.seq+1; const e=this.ledgerPool[seq%this.ledgerPool.length]; const row={...e,seq,hash:this.genHash()}; return {seq,ledger:[...s.ledger,row].slice(-7),count:s.count+1}; }); }
+  renderVals(){
+    const s=this.state, sc=this.scenarios[s.pIdx];
+    return {
+      typed:s.typed, policyReq:sc.req, policyVerdict:sc.v, policyColor:this.colorFor(sc.v),
+      ledgerRows:s.ledger.map(r=>({...r,color:this.colorFor(r.v)})), ledgerCount:s.count.toLocaleString(),
+      onSubmit:(e)=>{
+        e.preventDefault(); var form=e.target, input=form.querySelector('input[type="email"]'), btn=form.querySelector('button[type="submit"]');
+        if(!input||!input.value||!input.value.includes('@')){
+          var wrapper=input.closest('.footer-newsletter-input-wrapper')||input;
+          wrapper.style.borderColor='rgba(196,69,47,.7)'; wrapper.style.boxShadow='0 0 0 3px rgba(196,69,47,.14)';
+          setTimeout(function(){wrapper.style.borderColor='';wrapper.style.boxShadow='';},1500); return;
+        }
+        var isFooter=btn.classList.contains('footer-newsletter-btn'), orig=btn.innerHTML;
+        if(isFooter){ btn.innerHTML='✓'; btn.style.background='var(--ok)'; btn.style.color='#ffffff'; }
+        else btn.textContent='✓ You\'re on the list!';
+        btn.style.pointerEvents='none'; input.value=''; input.placeholder=isFooter?'✓ Subscribed — check your inbox':'We\'ll be in touch — check your inbox'; input.disabled=true;
+        setTimeout(function(){btn.innerHTML=orig;btn.style.pointerEvents='';btn.style.background='';btn.style.color='';input.disabled=false;input.placeholder=isFooter?'Enter your email':'you@company.com';},4000);
+      },
+    };
+  }
+}
+</script>
+
+<!-- ==================== SUPPORT SCRIPTS ==================== -->
+<script>
+(function(){
+  var root=document.documentElement,KEY='aeg-theme';
+  function set(t){ if(t==='dark')root.setAttribute('data-theme','dark');else root.removeAttribute('data-theme'); try{localStorage.setItem(KEY,t);}catch(e){} }
+  document.addEventListener('click',function(e){ var btn=e.target.closest&&e.target.closest('#themeToggle'); if(!btn)return; e.preventDefault(); set(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  function updateIcons(){ var isDark=root.getAttribute('data-theme')==='dark'; var lights=document.querySelectorAll('.theme-icon-light'),darks=document.querySelectorAll('.theme-icon-dark'); lights.forEach(function(el){el.style.display=isDark?'none':'inline';}); darks.forEach(function(el){el.style.display=isDark?'inline':'none';}); }
+  updateIcons();
+  new MutationObserver(updateIcons).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+
+<script>
+(function(){
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function init(){
+    var nodes=document.querySelectorAll('.aeg-page section,.aeg-page footer'); if(!nodes.length)return;
+    if(reduce||!('IntersectionObserver' in window)){ nodes.forEach(function(n){n.classList.add('sr-in');}); return; }
+    var io=new IntersectionObserver(function(entries){ entries.forEach(function(e){ if(e.isIntersecting){e.target.classList.add('sr-in');io.unobserve(e.target);} }); },{threshold:.1,rootMargin:'0px 0px -10% 0px'});
+    nodes.forEach(function(n){ var vh=window.innerHeight||document.documentElement.clientHeight; if(n.getBoundingClientRect().top<vh*.92)return; n.classList.add('sr'); io.observe(n); });
+  }
+  if(document.readyState==='complete')setTimeout(init,60); else window.addEventListener('load',function(){setTimeout(init,60);});
+})();
+</script>
+
+<script>
+(function(){
+  function getElements(){ return { btn:document.getElementById('mobileMenuToggle'), menu:document.getElementById('mobileMenu') }; }
+  function toggleMenu(btn,menu){
+    var isOpen=menu.classList.contains('is-open');
+    if(isOpen){ menu.classList.remove('is-open'); btn.setAttribute('aria-expanded','false');
+      var im=btn.querySelector('.icon-menu'),ic=btn.querySelector('.icon-close'); if(im)im.style.display='inline'; if(ic)ic.style.display='none'; }
+    else { menu.classList.add('is-open'); btn.setAttribute('aria-expanded','true');
+      var im2=btn.querySelector('.icon-menu'),ic2=btn.querySelector('.icon-close'); if(im2)im2.style.display='none'; if(ic2)ic2.style.display='inline'; }
+  }
+  document.addEventListener('click',function(e){ var btn=e.target.closest&&e.target.closest('#mobileMenuToggle'); if(!btn)return; e.preventDefault(); var els=getElements(); if(els.btn&&els.menu)toggleMenu(els.btn,els.menu); });
+  document.addEventListener('click',function(e){ var els=getElements(); if(!els.menu||!els.menu.classList.contains('is-open'))return; var clickedLink=e.target.closest('.mobile-nav-link')||e.target.closest('#mobileMenu .btn'); var clickedOutside=!e.target.closest('#mobileMenu')&&!e.target.closest('#mobileMenuToggle')&&!e.target.closest('.theme-toggle'); if(clickedLink||clickedOutside)toggleMenu(els.btn,els.menu); });
+})();
+</script>
+
+<script>
+(function(){
+  var BANNER_KEY='aeg-announcement-dismissed';
+  document.addEventListener('click',function(e){ var btn=e.target.closest&&e.target.closest('#closeBannerBtn'); if(!btn)return; e.preventDefault(); var banner=document.getElementById('announcementBanner'); if(!banner)return; var height=banner.offsetHeight; banner.style.height=height+'px'; banner.offsetHeight; banner.classList.add('is-hidden'); try{localStorage.setItem(BANNER_KEY,'true');}catch(err){} setTimeout(function(){document.documentElement.classList.add('aeg-announcement-dismissed');},400); });
+})();
+</script>
+
+</body>
+</html>
