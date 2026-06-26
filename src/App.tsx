@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { MotionConfig } from "framer-motion"
+import { MotionConfig, motion, AnimatePresence } from "framer-motion"
 import WorldMap from "./components/WorldMap"
 import Lenis from "lenis"
 
@@ -11,6 +11,73 @@ import Lenis from "lenis"
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+// ── Live MCP terminal ────────────────────────────────────────────────────────
+// Types the install command, then streams the success lines, then loops.
+const MCP_CMD = "agenttag mcp add --client claude";
+const MCP_OUT: (React.ReactNode | null)[] = [
+  <><span className="ok">✓</span> passport minted&nbsp;&nbsp;<span className="dim">did:key:z6Mk…</span></>,
+  <><span className="ok">✓</span> mandate signed&nbsp;&nbsp;<span className="dim">starter · $50/mo</span></>,
+  <><span className="ok">✓</span> server connected</>,
+  null, // spacer
+  <># claude_desktop_config.json</>,
+  <><span className="dim">{"{"}</span> <span className="br">"agenttag"</span>: <span className="dim">{"{"}</span> <span className="br">"command"</span>: <span className="grn">"agenttag"</span> <span className="dim">{"}"} {"}"}</span></>,
+];
+
+function MCPConsole() {
+  const reduce = prefersReducedMotion();
+  const [typed, setTyped] = useState(reduce ? MCP_CMD.length : 0);
+  const [shown, setShown] = useState(reduce ? MCP_OUT.length : 0);
+  const [typing, setTyping] = useState(!reduce);
+  const timers = useRef<number[]>([]);
+
+  useEffect(() => {
+    if (reduce) return;
+    const at = (fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, ms)); };
+    const clearAll = () => { timers.current.forEach((id) => clearTimeout(id)); timers.current = []; };
+
+    const run = () => {
+      clearAll();
+      setTyped(0); setShown(0); setTyping(true);
+      let delay = 650;
+      for (let i = 1; i <= MCP_CMD.length; i++) {
+        const n = i;
+        at(() => setTyped(n), delay);
+        delay += 42 + (MCP_CMD[i - 1] === " " ? 55 : 0);
+      }
+      at(() => setTyping(false), delay + 250);
+      delay += 650;
+      for (let i = 1; i <= MCP_OUT.length; i++) {
+        const n = i;
+        at(() => setShown(n), delay);
+        delay += 430;
+      }
+      at(run, delay + 2800); // hold, then loop
+    };
+    run();
+    return clearAll;
+  }, [reduce]);
+
+  const allShown = shown >= MCP_OUT.length;
+  return (
+    <div className="mcp-console z">
+      <div className="mcp-cl">
+        <span className="pmt">$</span> {MCP_CMD.slice(0, typed)}
+        {typing && <span className="term-caret">▋</span>}
+      </div>
+      {MCP_OUT.map((line, i) =>
+        i >= shown ? null : line === null ? (
+          <div className="mcp-spacer" key={i}></div>
+        ) : (
+          <div className={"mcp-cl term-line" + (i === 4 ? " cmt" : "")} key={i}>{line}</div>
+        )
+      )}
+      {!typing && allShown && (
+        <div className="mcp-cl"><span className="pmt">$</span> <span className="term-caret">▋</span></div>
+      )}
+    </div>
+  );
+}
 
 // Reveal item: fade + gentle rise. Used as staggered children (e.g. the hero
 // passport fields populating in). Pair with a container that drives `show`.
@@ -99,7 +166,8 @@ function App() {
       const anchor = target.closest('a');
       if (anchor) {
         const href = anchor.getAttribute('href');
-        if (href && href.startsWith('#')) {
+        // Let route links (#/app/…) fall through to the browser/hash router.
+        if (href && href.startsWith('#') && !href.startsWith('#/')) {
           e.preventDefault();
           const targetEl = document.querySelector(href);
           if (targetEl) {
@@ -164,6 +232,67 @@ function App() {
   );
   const [count, setCount] = useState(1047);
 
+  // ---- Interactive demo controls ----
+  // Approval card (STEP-UP → APPROVED / DENIED, reversible)
+  const [approval, setApproval] = useState<"pending" | "approved" | "denied">("pending");
+
+  // "Connect new tool" — append from a pool with a connecting→connected flip
+  const newToolPool = [
+    { name: "Slack", desc: "Scoped channel posts" },
+    { name: "Notion", desc: "Workspace read / write" },
+    { name: "AWS Lambda", desc: "Invoke scoped functions" },
+    { name: "Linear", desc: "Issue automation" },
+  ];
+  const [extraTools, setExtraTools] = useState<{ name: string; desc: string; status: "connecting" | "connected" }[]>([]);
+  const connectTool = () => {
+    if (extraTools.length >= newToolPool.length) return;
+    const idx = extraTools.length;
+    const next = newToolPool[idx];
+    setExtraTools((prev) => [...prev, { ...next, status: "connecting" }]);
+    setTimeout(() => {
+      setExtraTools((cur) => cur.map((t, i) => (i === idx ? { ...t, status: "connected" } : t)));
+    }, 900);
+  };
+
+  // Live mandate search filter
+  const [mandateQuery, setMandateQuery] = useState("");
+  const mandates = [
+    { name: "saas-spend-limit.json" },
+    { name: "mcp-tools-allowlist.json" },
+  ];
+  const filteredMandates = mandates.filter((m) => m.name.toLowerCase().includes(mandateQuery.toLowerCase()));
+  // The live "eval" row matches on the literal "eval" label or the current request text
+  const evalRowVisible = "eval".includes(mandateQuery.toLowerCase()) || scenarios[pIdx].req.toLowerCase().includes(mandateQuery.toLowerCase());
+
+  // FAQ accordion — first item open by default; null = all collapsed.
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const faqItems = [
+    {
+      q: "What exactly is an agent “passport”?",
+      a: "Every agent gets its own cryptographic identity — an Ed25519 DID that signs each request and audit entry. It's the agent's own credential, not a copy of yours, so you can scope it tightly and revoke it instantly.",
+    },
+    {
+      q: "How is this different from giving an agent my API keys?",
+      a: "Shared keys can't be scoped, attributed, or revoked per-agent. AgentTag issues each agent a distinct identity governed by signed mandates, so every action is authorized, attributable, and reversible with a single revocation.",
+    },
+    {
+      q: "What does “governed by mandates” mean in practice?",
+      a: "A mandate is a cryptographically signed policy you sign as the accountable human. It defines what an agent may do — spend limits, allowed merchants, step-up approvals — and the policy engine enforces it in real time before any action runs.",
+    },
+    {
+      q: "Which clients and tools does it work with?",
+      a: "AgentTag is MCP-native: a single server exposes a standard tool surface to Claude, ChatGPT, or your own client libraries. Connect once and every capability is governed and logged automatically.",
+    },
+    {
+      q: "Is the audit ledger really tamper-evident?",
+      a: "Yes. Every decision is recorded in a hash-chained ledger where each entry links to the previous one, so history can't be quietly rewritten. The chain is independently verifiable.",
+    },
+    {
+      q: "What does it cost during the beta?",
+      a: "AgentTag is free while we're in public beta. Founding-user pricing locks in for early teams, and enterprise SSO, SLAs, and on-prem options are available when you need them.",
+    },
+  ];
+
 
 
   // Derived values
@@ -196,6 +325,58 @@ function App() {
       setTimeout(() => { btn.style.background = ''; btn.innerHTML = oldText; }, 2000);
     }
   };
+
+  // Scroll-reveal: section content rises gently into view. Tuned to feel
+  // premium, not janky — it triggers *before* an element enters so nothing
+  // fades in late, reveals anything already on the first screen immediately,
+  // and has a fail-safe so content can never get stuck invisible.
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("section.aeg-section"));
+    const targets: HTMLElement[] = [];
+    sections.forEach((sec) => {
+      const kids = sec.querySelectorAll<HTMLElement>(
+        ":scope > .eyebrow, :scope > h2, :scope > p, :scope > .card, :scope > .panel-dark, :scope > [class*='grid'], :scope > [class*='flows'], :scope > [class*='cmp'], :scope > .policy-grid"
+      );
+      kids.forEach((el, i) => {
+        if (el.classList.contains("reveal")) return; // hero handles its own
+        el.classList.add("sr");
+        el.style.setProperty("--sr-i", String(Math.min(i, 5)));
+        targets.push(el);
+      });
+    });
+    if (!targets.length) return;
+    const reveal = (el: Element) => el.classList.add("sr-in");
+
+    // Reveal whatever is already within (or just below) the first screen so the
+    // initial paint is never a wall of blank space.
+    requestAnimationFrame(() => {
+      const vh = window.innerHeight;
+      targets.forEach((el) => {
+        if (el.getBoundingClientRect().top < vh * 1.05) reveal(el);
+      });
+    });
+
+    if (!("IntersectionObserver" in window)) {
+      targets.forEach(reveal);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) { reveal(e.target); io.unobserve(e.target); }
+        });
+      },
+      // Positive bottom margin => fire ~16% before the element scrolls in.
+      { threshold: 0, rootMargin: "0px 0px 16% 0px" }
+    );
+    targets.forEach((t) => io.observe(t));
+
+    // Crash guard: if the observer never fires for some target, reveal it.
+    const failsafe = window.setTimeout(() => targets.forEach(reveal), 5000);
+
+    return () => { io.disconnect(); clearTimeout(failsafe); };
+  }, []);
 
   // Run simulation loops
   useEffect(() => {
@@ -270,8 +451,8 @@ function App() {
       offscreenCanvas.height = height;
       if (offscreenCtx) {
         offscreenCtx.clearRect(0, 0, width, height);
-        const copperColor = getComputedStyle(canvas).getPropertyValue('--copper').trim() || '#b84c30';
-        offscreenCtx.fillStyle = copperColor;
+        const crimsonColor = getComputedStyle(canvas).getPropertyValue('--crimson').trim() || '#a91b2c';
+        offscreenCtx.fillStyle = crimsonColor;
         offscreenCtx.globalAlpha = 0.065;
         offscreenCtx.beginPath();
         for (let x = spacing / 2; x < width; x += spacing) {
@@ -298,7 +479,7 @@ function App() {
       // 1. Draw pre-rendered static background grid
       ctx.drawImage(offscreenCanvas, 0, 0);
       
-      const copperColor = getComputedStyle(canvas).getPropertyValue('--copper').trim() || '#b84c30';
+      const crimsonColor = getComputedStyle(canvas).getPropertyValue('--crimson').trim() || '#a91b2c';
       
       // Update mouse position with smooth but fast easing
       const targetEase = mouse.active ? 1.0 : 0.0;
@@ -314,7 +495,7 @@ function App() {
         const startY = Math.max(spacing / 2, Math.floor((mouse.y - radius) / spacing) * spacing + spacing / 2);
         const endY = Math.min(height, Math.ceil((mouse.y + radius) / spacing) * spacing + spacing / 2);
         
-        ctx.fillStyle = copperColor;
+        ctx.fillStyle = crimsonColor;
         
         for (let x = startX; x < endX; x += spacing) {
           for (let y = startY; y < endY; y += spacing) {
@@ -356,7 +537,7 @@ function App() {
   <div style={{height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: isScrolled ? "0 6px 0 18px" : "0 40px", transition: "padding 0.4s var(--ease)", maxWidth: "100%"}}>
     <div style={{display: "flex", alignItems: "center", gap: "34px"}}>
       <a href="#top" style={{display: "flex", alignItems: "center", gap: "10px", textDecoration: "none"}}>
-        <svg fill="none" height="24" viewBox="0 0 24 24" width="24" className="brand-logo-svg"><rect fill="var(--copper-tint)" height="19" rx="5.5" stroke="var(--copper)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--copper)" height="4" opacity=".4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--copper)" height="4" opacity=".4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+        <svg fill="none" height="24" viewBox="0 0 24 24" width="24" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
         <span className="brand-logo-text">AgentTag</span>
       </a>
       <div className="hide-sm" style={{display: "flex", alignItems: "center", gap: "2px"}}>
@@ -450,15 +631,15 @@ function App() {
           <feGaussianBlur stdDeviation="38" />
         </filter>
 
-        {/* Ambient warm amber glow definitions */}
+        {/* Ambient premium crimson glow definitions */}
         <radialGradient id="glow-amber-light" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ff931a" stopOpacity="0.9" />
-          <stop offset="40%" stopColor="#ff5800" stopOpacity="0.65" />
-          <stop offset="100%" stopColor="#ff8000" stopOpacity="0" />
+          <stop offset="0%" stopColor="#ff4d6d" stopOpacity="0.9" />
+          <stop offset="40%" stopColor="#ff0a54" stopOpacity="0.65" />
+          <stop offset="100%" stopColor="#c9184a" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="glow-amber-dark" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ff6c00" stopOpacity="0.8" />
-          <stop offset="50%" stopColor="#9c280f" stopOpacity="0.45" />
+          <stop offset="0%" stopColor="#e01e37" stopOpacity="0.8" />
+          <stop offset="50%" stopColor="#800f2f" stopOpacity="0.45" />
           <stop offset="100%" stopColor="#08090c" stopOpacity="0" />
         </radialGradient>
 
@@ -466,62 +647,62 @@ function App() {
         <linearGradient id="wave-grad-light" x1="0%" y1="70%" x2="100%" y2="30%">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
           <stop offset="20%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="42%" stopColor="#ffb885" stopOpacity="0.65" />
-          <stop offset="68%" stopColor="#ff4e15" stopOpacity="0.99" />
-          <stop offset="88%" stopColor="#c02604" stopOpacity="1" />
-          <stop offset="100%" stopColor="#440900" stopOpacity="1" />
+          <stop offset="42%" stopColor="#ffccd5" stopOpacity="0.65" />
+          <stop offset="68%" stopColor="#ff4d6d" stopOpacity="0.99" />
+          <stop offset="88%" stopColor="#c9184a" stopOpacity="1" />
+          <stop offset="100%" stopColor="#590d22" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="wave-grad-dark" x1="0%" y1="70%" x2="100%" y2="30%">
           <stop offset="0%" stopColor="#08090c" stopOpacity="0" />
           <stop offset="25%" stopColor="#08090c" stopOpacity="0" />
-          <stop offset="50%" stopColor="#d83e18" stopOpacity="0.7" />
-          <stop offset="75%" stopColor="#f87e5b" stopOpacity="0.9" />
-          <stop offset="90%" stopColor="#ffbba0" stopOpacity="0.98" />
+          <stop offset="50%" stopColor="#c9184a" stopOpacity="0.7" />
+          <stop offset="75%" stopColor="#ff758f" stopOpacity="0.9" />
+          <stop offset="90%" stopColor="#ffccd5" stopOpacity="0.98" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
         </linearGradient>
         
         <linearGradient id="wave-grad-light-2" x1="0%" y1="50%" x2="100%" y2="50%">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
           <stop offset="35%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="65%" stopColor="#ffcaa8" stopOpacity="0.5" />
-          <stop offset="85%" stopColor="#ff7a45" stopOpacity="0.88" />
-          <stop offset="100%" stopColor="#c03214" stopOpacity="0.96" />
+          <stop offset="65%" stopColor="#ffb3c1" stopOpacity="0.5" />
+          <stop offset="85%" stopColor="#ff4d6d" stopOpacity="0.88" />
+          <stop offset="100%" stopColor="#a4133c" stopOpacity="0.96" />
         </linearGradient>
         <linearGradient id="wave-grad-dark-2" x1="0%" y1="50%" x2="100%" y2="50%">
           <stop offset="0%" stopColor="#08090c" stopOpacity="0" />
           <stop offset="35%" stopColor="#08090c" stopOpacity="0" />
-          <stop offset="65%" stopColor="#c03214" stopOpacity="0.5" />
-          <stop offset="85%" stopColor="#ff8663" stopOpacity="0.8" />
+          <stop offset="65%" stopColor="#a4133c" stopOpacity="0.5" />
+          <stop offset="85%" stopColor="#ff758f" stopOpacity="0.8" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0.98" />
         </linearGradient>
 
         {/* Crease Edge Gradients (Light) */}
         <linearGradient id="edge-grad-light" x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="20%" stopColor="#ffb885" stopOpacity="0.75" />
-          <stop offset="50%" stopColor="#ff3b00" stopOpacity="0.99" />
-          <stop offset="80%" stopColor="#b32c0d" stopOpacity="0.99" />
-          <stop offset="100%" stopColor="#6b1300" stopOpacity="1" />
+          <stop offset="20%" stopColor="#ffccd5" stopOpacity="0.75" />
+          <stop offset="50%" stopColor="#ff4d6d" stopOpacity="0.99" />
+          <stop offset="80%" stopColor="#c9184a" stopOpacity="0.99" />
+          <stop offset="100%" stopColor="#590d22" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="edge-grad-light-2" x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="30%" stopColor="#ffcaa8" stopOpacity="0.6" />
-          <stop offset="70%" stopColor="#ff541c" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="#aa280a" stopOpacity="0.98" />
+          <stop offset="30%" stopColor="#ffccd5" stopOpacity="0.6" />
+          <stop offset="70%" stopColor="#ff4d6d" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#c9184a" stopOpacity="0.98" />
         </linearGradient>
 
         {/* Crease Edge Gradients (Dark) */}
         <linearGradient id="edge-grad-dark" x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#0e1014" stopOpacity="0" />
-          <stop offset="20%" stopColor="#ff6c00" stopOpacity="0.55" />
-          <stop offset="55%" stopColor="#ff8a63" stopOpacity="0.9" />
-          <stop offset="80%" stopColor="#ffd8c8" stopOpacity="0.99" />
+          <stop offset="20%" stopColor="#e01e37" stopOpacity="0.55" />
+          <stop offset="55%" stopColor="#ff758f" stopOpacity="0.9" />
+          <stop offset="80%" stopColor="#ffccd5" stopOpacity="0.99" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="edge-grad-dark-2" x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#0e1014" stopOpacity="0" />
-          <stop offset="40%" stopColor="#d83e18" stopOpacity="0.45" />
-          <stop offset="75%" stopColor="#ff8663" stopOpacity="0.75" />
+          <stop offset="40%" stopColor="#c9184a" stopOpacity="0.45" />
+          <stop offset="75%" stopColor="#ff758f" stopOpacity="0.75" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0.9" />
         </linearGradient>
 
@@ -540,7 +721,7 @@ function App() {
       
       {/* ================= LAYER 1: Deep Ambient Glows ================= */}
       <g filter="url(#liquid-blur-deep)">
-        {/* Soft Warm Amber core glow at bottom-center-right */}
+        {/* Soft Warm Crimson core glow at bottom-center-right */}
         <ellipse 
           className="gradient-blob-1"
           cx="950" 
@@ -676,13 +857,13 @@ function App() {
 <div className="hero-row reveal d3" style={{display: "flex", gap: "24px", alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginTop: "36px", marginBottom: "22px"}}>
 {/* 1 min setup badge */}
 <div style={{display: "flex", alignItems: "center", gap: "8px", color: "var(--muted)", fontSize: "14.5px", fontWeight: "590", letterSpacing: "-0.15px", userSelect: "none"}}>
-<svg fill="none" height="15" style={{flex: "none", color: "var(--copper)"}} viewBox="0 0 24 24" width="15">
+<svg fill="none" height="15" style={{flex: "none", color: "var(--crimson)"}} viewBox="0 0 24 24" width="15">
 <path d="M12 2C12 12 2 12 2 12C2 12 12 12 12 22C12 12 22 12 22 12C22 12 12 12 12 2" fill="currentColor"></path>
 </svg>
 <span>1 min setup</span>
 </div>
 {/* Pill CTA Button */}
-<a className="btn-cta-primary" href="#cta">
+<a className="btn-cta-primary" href="#/app/dashboard">
             Get started now <span style={{fontFamily: "monospace", fontWeight: "600", marginLeft: "2px"}}>&gt;<span className="btn-cta-cursor">_</span></span>
 </a>
 </div>
@@ -758,95 +939,95 @@ function App() {
         <svg className="flow-grid-svg" viewBox="0 0 800 280" width="100%" height="100%">
 
           
-          {/* Chaotic crossing lines */}
-          <path d="M 46 140 L 106 170 L 256 200 L 376 140 L 496 20 L 706 80" className="messy-line line-1" />
-          <path d="M 256 80 L 166 230 L 316 230 L 436 200 L 556 110 L 616 110 L 676 230" className="messy-line line-2" />
-          <path d="M 106 170 L 166 110 L 256 80 L 376 140 M 376 140 L 436 200 L 496 20" className="messy-line line-3" />
-          <path d="M 46 140 L 166 230" className="messy-line line-4" />
-          <path d="M 256 200 L 316 230 L 376 140 L 436 200" className="messy-line line-5" />
-          <path d="M 616 110 L 676 230 L 706 80" className="messy-line line-7" />
-          
-          {/* Failure paths — each dashed line terminates exactly at its Red X */}
-          {/* err-1: Phone(46,140) → RedX(166,170) */}
-          <path d="M 46 140 L 166 170" className="messy-line line-err" strokeDasharray="3 3" />
-          {/* err-2: Laptop(256,80) → RedX(316,110) */}
-          <path d="M 256 80 L 316 110" className="messy-line line-err" strokeDasharray="3 3" />
-          {/* err-3: node(436,200) → RedX(556,230) */}
-          <path d="M 436 200 L 556 230" className="messy-line line-err" strokeDasharray="3 3" />
-          {/* err-4: node(616,110) → RedX(676,80) — stops at X, never reaches Phone */}
-          <path d="M 616 110 L 676 80" className="messy-line line-err" strokeDasharray="3 3" />
+          {/* Lines drift clearly left→right. One stronger "spine" (tier-strong)
+              carries the eye from the start phone through center to the end phone;
+              medium + faint strands build the web around it without cluttering. */}
 
-          {/* Nodes & Icons */}
-          {/* Laptop icon at (256, 80) */}
-          <g transform="translate(256, 80)">
+          {/* Spine — the readable left-to-right path the eye tracks */}
+          <path d="M 50 140 L 215 128 L 330 108 L 470 66 L 560 84 L 660 120 L 745 150" className="messy-line tier-strong" />
+
+          {/* Medium secondary strands */}
+          <path d="M 50 140 L 120 170 L 255 185 L 360 214 L 455 160" className="messy-line tier-med" />
+          <path d="M 150 96 L 215 128" className="messy-line tier-med" />
+          <path d="M 255 185 L 330 108" className="messy-line tier-med" />
+          <path d="M 455 160 L 560 84 L 610 200" className="messy-line tier-med" />
+
+          {/* Faint tertiary strands — the cluttered "web" feel, barely there */}
+          <path d="M 120 170 L 215 128 L 255 185" className="messy-line tier-faint" />
+          <path d="M 360 214 L 455 160 L 610 200 L 660 120" className="messy-line tier-faint" />
+          <path d="M 330 108 L 360 214" className="messy-line tier-faint" />
+          <path d="M 470 66 L 560 84" className="messy-line tier-faint" />
+          <path d="M 610 200 L 745 150" className="messy-line tier-faint" />
+
+          {/* Failure paths — each dashed line terminates exactly at its Red X */}
+          {/* err-1: node(120,170) → RedX(185,158) */}
+          <path d="M 120 170 L 185 158" className="messy-line line-err" strokeDasharray="3 3" />
+          {/* err-2: node(330,108) → RedX(320,58) */}
+          <path d="M 330 108 L 320 58" className="messy-line line-err" strokeDasharray="3 3" />
+          {/* err-3: node(455,160) → RedX(515,228) */}
+          <path d="M 455 160 L 515 228" className="messy-line line-err" strokeDasharray="3 3" />
+          {/* err-4: node(660,120) → RedX(700,92) — stops at X, never reaches end phone */}
+          <path d="M 660 120 L 700 92" className="messy-line line-err" strokeDasharray="3 3" />
+
+          {/* Nodes & Icons — ordered left→right */}
+          {/* Phone (start) at (50, 140) */}
+          <g transform="translate(50, 140)">
+            <circle cx="0" cy="0" r="14" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.5" />
+            <rect x="-5" y="-8" width="10" height="16" rx="1.5" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
+            <circle cx="0" cy="5" r="0.8" fill="var(--ink)" />
+          </g>
+
+          {/* Email Envelope icon at (150, 96) */}
+          <g transform="translate(150, 96)">
+            <circle cx="0" cy="0" r="14" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.5" />
+            <rect x="-7" y="-5" width="14" height="10" rx="1" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
+            <path d="M-7 -3 L0 1.5 L7 -3" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
+          </g>
+
+          {/* Laptop icon at (255, 185) */}
+          <g transform="translate(255, 185)">
             <circle cx="0" cy="0" r="14" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.5" />
             <rect x="-7" y="-5" width="14" height="9" rx="1.2" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
             <line x1="-9" y1="5" x2="9" y2="5" stroke="var(--ink)" strokeWidth="1.2" />
           </g>
 
-          {/* Email Envelope icon at (166, 110) */}
-          <g transform="translate(166, 110)">
+          {/* Email Envelope icon at (560, 84) */}
+          <g transform="translate(560, 84)">
             <circle cx="0" cy="0" r="14" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.5" />
             <rect x="-7" y="-5" width="14" height="10" rx="1" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
             <path d="M-7 -3 L0 1.5 L7 -3" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
           </g>
 
-          {/* Phone icon at (46, 140) */}
-          <g transform="translate(46, 140)">
+          {/* Phone (end) at (745, 150) */}
+          <g transform="translate(745, 150)">
             <circle cx="0" cy="0" r="14" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.5" />
             <rect x="-5" y="-8" width="10" height="16" rx="1.5" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
             <circle cx="0" cy="5" r="0.8" fill="var(--ink)" />
           </g>
 
-          {/* Email Envelope icon at (556, 110) */}
-          <g transform="translate(556, 110)">
-            <circle cx="0" cy="0" r="14" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.5" />
-            <rect x="-7" y="-5" width="14" height="10" rx="1" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
-            <path d="M-7 -3 L0 1.5 L7 -3" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
-          </g>
-
-          {/* Phone icon at (706, 80) */}
-          <g transform="translate(706, 80)">
-            <circle cx="0" cy="0" r="14" fill="var(--paper)" stroke="var(--line)" strokeWidth="1.5" />
-            <rect x="-5" y="-8" width="10" height="16" rx="1.5" fill="none" stroke="var(--ink)" strokeWidth="1.2" />
-            <circle cx="0" cy="5" r="0.8" fill="var(--ink)" />
-          </g>
-
-          {/* Red X failures */}
-          {/* Red X at (166, 170) */}
-          <g transform="translate(166, 170)">
-            <circle cx="0" cy="0" r="12" fill="rgba(196,69,47,0.1)" stroke="rgba(196,69,47,0.3)" strokeWidth="1.2" />
-            <path d="M-4 -4 L4 4 M4 -4 L-4 4" stroke="#c4452f" strokeWidth="1.8" strokeLinecap="round" />
-          </g>
-          
-          {/* Red X at (316, 110) */}
-          <g transform="translate(316, 110)">
-            <circle cx="0" cy="0" r="12" fill="rgba(196,69,47,0.1)" stroke="rgba(196,69,47,0.3)" strokeWidth="1.2" />
-            <path d="M-4 -4 L4 4 M4 -4 L-4 4" stroke="#c4452f" strokeWidth="1.8" strokeLinecap="round" />
-          </g>
-
-          {/* Red X at (556, 230) */}
-          <g transform="translate(556, 230)">
-            <circle cx="0" cy="0" r="12" fill="rgba(196,69,47,0.1)" stroke="rgba(196,69,47,0.3)" strokeWidth="1.2" />
-            <path d="M-4 -4 L4 4 M4 -4 L-4 4" stroke="#c4452f" strokeWidth="1.8" strokeLinecap="round" />
-          </g>
-
-          {/* Red X at (676, 80) */}
-          <g transform="translate(676, 80)">
-            <circle cx="0" cy="0" r="12" fill="rgba(196,69,47,0.1)" stroke="rgba(196,69,47,0.3)" strokeWidth="1.2" />
-            <path d="M-4 -4 L4 4 M4 -4 L-4 4" stroke="#c4452f" strokeWidth="1.8" strokeLinecap="round" />
-          </g>
+          {/* Red X failures — soft glassmorphism blobs (graduated red wash, no hard ring) */}
+          {[
+            [185, 158],
+            [320, 58],
+            [515, 228],
+            [700, 92],
+          ].map(([x, y]) => (
+            <g key={`mess-x-${x}-${y}`} transform={`translate(${x}, ${y})`}>
+              <circle cx="0" cy="0" r="14" fill="rgba(239, 68, 68, 0.10)" />
+              <circle cx="0" cy="0" r="9" fill="rgba(239, 68, 68, 0.16)" />
+              <path d="M-3.5 -3.5 L3.5 3.5 M3.5 -3.5 L-3.5 3.5" stroke="#b42318" strokeWidth="1.8" strokeLinecap="round" />
+            </g>
+          ))}
 
           {/* Normal white connection nodes */}
-          <circle cx="106" cy="170" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="256" cy="200" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="376" cy="140" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="316" cy="230" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="436" cy="200" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="166" cy="230" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="616" cy="110" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="676" cy="230" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
-          <circle cx="496" cy="20" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="120" cy="170" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="215" cy="128" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="330" cy="108" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="360" cy="214" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="455" cy="160" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="470" cy="66" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="610" cy="200" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
+          <circle cx="660" cy="120" r="4.5" fill="#fff" stroke="var(--ink)" strokeWidth="1.5" />
         </svg>
       </div>
     </div>
@@ -1111,15 +1292,7 @@ function App() {
 <p style={{margin: "8px 0 0", fontSize: "14px", lineHeight: "1.6", color: "var(--muted)"}}>Add the server to your MCP client and the tools appear in the agent automatically.</p>
 </div>
 <div className="panel-dark" style={{borderRadius: "0", borderLeft: "0", borderRight: "0", flex: "1"}}>
-<div className="mcp-console z">
-<div className="mcp-cl"><span className="pmt">$</span> agenttag mcp add --client claude</div>
-<div className="mcp-cl"><span className="ok">✓</span> passport minted&nbsp;&nbsp;<span className="dim">did:key:z6Mk…</span></div>
-<div className="mcp-cl"><span className="ok">✓</span> mandate signed&nbsp;&nbsp;<span className="dim">starter · $50/mo</span></div>
-<div className="mcp-cl"><span className="ok">✓</span> server connected</div>
-<div className="mcp-spacer"></div>
-<div className="mcp-cl cmt"># claude_desktop_config.json</div>
-<div className="mcp-cl"><span className="dim">{"{"}</span> <span className="br">"agenttag"</span>: <span className="dim">{"{"}</span> <span className="br">"command"</span>: <span className="grn">"agenttag"</span> <span className="dim">{"}"} {"}"}</span></div>
-</div>
+<MCPConsole />
 </div>
 </div>
 </div>
@@ -1144,7 +1317,7 @@ function App() {
 {/* Animated dotted world map with copper connection arcs */}
 <WorldMap
   theme={theme === 'dark' ? 'dark' : 'light'}
-  lineColor={theme === 'dark' ? '#d46547' : '#b84c30'}
+  lineColor={theme === 'dark' ? '#d23547' : '#a91b2c'}
   dots={[
     { start: { lat: 64.2008, lng: -149.4937 }, end: { lat: 34.0522, lng: -118.2437 } }, // Alaska -> Los Angeles
     { start: { lat: 64.2008, lng: -149.4937 }, end: { lat: -15.7975, lng: -47.8919 } }, // Alaska -> Brasília
@@ -1165,7 +1338,7 @@ function App() {
 <div className="framework-list">
 <div className="framework-item">
 <div className="framework-info">
-<div className="framework-icon-tile" style={{background: "rgba(191,106,46,0.1)", color: "var(--copper)"}}>
+<div className="framework-icon-tile" style={{background: "rgba(169, 27, 44, 0.1)", color: "var(--crimson)"}}>
 {/* CrewAI — multi-agent squad */}
 <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="15"><circle cx="12" cy="6" r="2.3"></circle><circle cx="5.5" cy="17" r="2.3"></circle><circle cx="18.5" cy="17" r="2.3"></circle><path d="M10.6 7.9 6.9 15M13.4 7.9 17.1 15M7.8 17h8.4"></path></svg>
 </div>
@@ -1175,7 +1348,7 @@ function App() {
 </div>
 <div className="framework-item">
 <div className="framework-info">
-<div className="framework-icon-tile" style={{background: "rgba(191,106,46,0.1)", color: "var(--copper)"}}>
+<div className="framework-icon-tile" style={{background: "rgba(169, 27, 44, 0.1)", color: "var(--crimson)"}}>
 {/* LangChain — chain links */}
 <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="15"><path d="M9.5 13a4 4 0 0 0 5.66 0l2.5-2.5a4 4 0 0 0-5.66-5.66l-1.3 1.3"></path><path d="M14.5 11a4 4 0 0 0-5.66 0l-2.5 2.5a4 4 0 0 0 5.66 5.66l1.3-1.3"></path></svg>
 </div>
@@ -1185,7 +1358,7 @@ function App() {
 </div>
 <div className="framework-item">
 <div className="framework-info">
-<div className="framework-icon-tile" style={{background: "rgba(191,106,46,0.1)", color: "var(--copper)"}}>
+<div className="framework-icon-tile" style={{background: "rgba(169, 27, 44, 0.1)", color: "var(--crimson)"}}>
 {/* Claude — radial burst */}
 <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="15"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"></path></svg>
 </div>
@@ -1242,9 +1415,23 @@ function App() {
 </div>
 <span className="aeg-chip aeg-chip--ok">Connected</span>
 </div>
-<button className="integration-add" type="button">
+{extraTools.map((t) => (
+<div className="integration-item" key={t.name}>
+<div className="integration-meta">
+<div className="integration-logo">
+<svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path></svg>
+</div>
+<div>
+<p className="integration-name">{t.name}</p>
+<p className="integration-desc">{t.desc}</p>
+</div>
+</div>
+<span className={t.status === "connecting" ? "aeg-chip" : "aeg-chip aeg-chip--ok"} style={t.status === "connecting" ? {color: "var(--warn)", background: "rgba(194,132,42,.12)", borderColor: "rgba(194,132,42,.25)"} : undefined}>{t.status === "connecting" ? "Connecting…" : "Connected"}</span>
+</div>
+))}
+<button className="integration-add" type="button" onClick={connectTool} disabled={extraTools.length >= newToolPool.length}>
 <svg fill="none" height="12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24" width="12"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
-Connect new tool
+{extraTools.length >= newToolPool.length ? "All tools connected" : "Connect new tool"}
 </button>
 </div>
 </div>
@@ -1261,20 +1448,20 @@ Connect new tool
 <svg fill="none" height="150" style={{opacity: "0.95"}} viewBox="0 0 200 200" width="150" xmlns="http://www.w3.org/2000/svg">
 {/* Outer dashed circles — slow counter-rotating rings */}
 <g className="scanner-rings">
-<circle cx="100" cy="100" fill="none" opacity="0.25" r="70" stroke="var(--copper)" strokeDasharray="4 4" strokeWidth="1"></circle>
+<circle cx="100" cy="100" fill="none" opacity="0.25" r="70" stroke="var(--crimson)" strokeDasharray="4 4" strokeWidth="1"></circle>
 </g>
 <g className="scanner-rings scanner-rings--rev">
-<circle cx="100" cy="100" fill="none" opacity="0.15" r="50" stroke="var(--copper)" strokeDasharray="3 3" strokeWidth="1"></circle>
+<circle cx="100" cy="100" fill="none" opacity="0.15" r="50" stroke="var(--crimson)" strokeDasharray="3 3" strokeWidth="1"></circle>
 </g>
 {/* Concentric arches (waves) */}
-<path d="M 60 95 A 40 40 0 0 1 140 95" fill="none" stroke="var(--copper)" strokeLinecap="round" strokeWidth="2"></path>
-<path d="M 75 95 A 25 25 0 0 1 125 95" fill="none" stroke="var(--copper)" strokeLinecap="round" strokeWidth="2"></path>
-<path d="M 90 95 A 10 10 0 0 1 110 95" fill="none" stroke="var(--copper)" strokeLinecap="round" strokeWidth="2"></path>
+<path d="M 60 95 A 40 40 0 0 1 140 95" fill="none" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="2"></path>
+<path d="M 75 95 A 25 25 0 0 1 125 95" fill="none" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="2"></path>
+<path d="M 90 95 A 10 10 0 0 1 110 95" fill="none" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="2"></path>
 {/* Horizontal base line */}
-<line opacity="0.3" stroke="var(--copper)" strokeLinecap="round" strokeWidth="1.5" x1="45" x2="155" y1="115" y2="115"></line>
+<line opacity="0.3" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="1.5" x1="45" x2="155" y1="115" y2="115"></line>
 {/* Vertical pill key */}
-<rect fill="var(--surface-2)" height="32" rx="6" stroke="var(--copper)" strokeWidth="2" width="12" x="94" y="100"></rect>
-<line stroke="var(--copper)" strokeLinecap="round" strokeWidth="1.5" x1="100" x2="100" y1="106" y2="116"></line>
+<rect fill="var(--surface-2)" height="32" rx="6" stroke="var(--crimson)" strokeWidth="2" width="12" x="94" y="100"></rect>
+<line stroke="var(--crimson)" strokeLinecap="round" strokeWidth="1.5" x1="100" x2="100" y1="106" y2="116"></line>
 </svg>
 <div className="scanner-bar"></div>
 <div className="scanner-indicator"><svg fill="none" height="9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" width="9" style={{marginRight: "5px", verticalAlign: "-1px"}}><polyline points="20 6 9 17 4 12"></polyline></svg>Passkey Ready</div>
@@ -1294,18 +1481,21 @@ Connect new tool
 <div className="ledger-box-body">
 <div className="ledger-search-bar">
 <svg fill="none" height="12" stroke="var(--muted)" strokeWidth="2.5" viewBox="0 0 24 24" width="12"><circle cx="11" cy="11" r="8"></circle><line x1="21" x2="16.65" y1="21" y2="16.65"></line></svg>
-<input className="ledger-search-input" disabled placeholder="Search active mandates..." type="text" value="starter-mandate.json"/>
+<input className="ledger-search-input" placeholder="Search active mandates..." type="text" value={mandateQuery} onChange={(e) => setMandateQuery(e.target.value)}/>
 </div>
 <div className="ledger-list">
-<div className="ledger-list-item">
-<span style={{color: "var(--muted)"}}>saas-spend-limit.json</span>
+{filteredMandates.map((m) => (
+<div className="ledger-list-item" key={m.name}>
+<span style={{color: "var(--muted)"}}>{m.name}</span>
 <span className="aeg-chip aeg-chip--ok">ACTIVE</span>
 </div>
-<div className="ledger-list-item">
-<span style={{color: "var(--muted)"}}>mcp-tools-allowlist.json</span>
-<span className="aeg-chip aeg-chip--ok">ACTIVE</span>
+))}
+{filteredMandates.length === 0 && !evalRowVisible && mandateQuery && (
+<div className="ledger-list-item" style={{justifyContent: "center"}}>
+<span style={{color: "var(--faint)", fontSize: "12px"}}>No mandates match “{mandateQuery}”</span>
 </div>
-<div className="ledger-list-item" style={{borderColor: "var(--copper)", background: "rgba(191,106,46,0.04)"}}>
+)}
+<div className="ledger-list-item" style={{borderColor: "var(--crimson)", background: "rgba(169, 27, 44, 0.04)", display: evalRowVisible ? "flex" : "none"}}>
 <span style={{color: "var(--ink)", fontWeight: "550", maxWidth: "130px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>eval: {"{"}{policyReq}{"}"}</span>
 <span className="aeg-chip" style={{color: policyColor, background: `color-mix(in srgb, ${policyColor} 12%, transparent)`, borderColor: `color-mix(in srgb, ${policyColor} 28%, transparent)`}}>{policyVerdict}</span>
 </div>
@@ -1320,8 +1510,8 @@ Connect new tool
 <div className="panel-dark" style={{padding: "0"}}>
 <div className="grid-2 z" style={{display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: "0"}}>
 <div style={{padding: "52px 44px"}}>
-<span className="kicker" style={{color: "var(--copper-br)"}}>The human holds the pen</span>
-<h2 className="display" style={{margin: "16px 0 16px", fontSize: "clamp(33px, 4.4vw, 52px)", lineHeight: "1.06", color: "#faf6ec"}}>Interrupted only when it <span className="accent-it" style={{color: "var(--copper-br)"}}>genuinely matters.</span></h2>
+<span className="kicker" style={{color: "var(--crimson-br)"}}>The human holds the pen</span>
+<h2 className="display" style={{margin: "16px 0 16px", fontSize: "clamp(33px, 4.4vw, 52px)", lineHeight: "1.06", color: "#faf6ec"}}>Interrupted only when it <span className="accent-it" style={{color: "var(--crimson-br)"}}>genuinely matters.</span></h2>
 <p style={{maxWidth: "440px", margin: "0 0 28px", fontSize: "16px", lineHeight: "1.7", color: "rgba(255,255,255,.55)"}}>Routine work runs untouched. When the agent reaches a new payee, a spend over your threshold, or anything irreversible, it pauses and asks — and your approval is signed on-device, never a blank cheque.</p>
 <div style={{display: "flex", flexWrap: "wrap", gap: "10px"}}>
 <span className="mono" style={{fontSize: "12.5px", color: "rgba(255,255,255,.6)", padding: "7px 13px", borderRadius: "8px", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)"}}>Always-allow learns your boundaries</span>
@@ -1331,16 +1521,36 @@ Connect new tool
 <div className="approval-visual-col">
 <div className="approval-card" style={{position: "relative", width: "100%", maxWidth: "320px", borderRadius: "20px", padding: "22px", background: "rgba(255,253,248,.9)", WebkitBackdropFilter: "blur(16px) saturate(1.4)", backdropFilter: "blur(16px) saturate(1.4)", border: "1px solid rgba(255,255,255,.5)", boxShadow: "0 1px 0 rgba(255,255,255,.6) inset, 0 34px 70px -26px rgba(0,0,0,.6), 0 8px 22px -14px rgba(0,0,0,.4)"}}>
 <div style={{display: "flex", alignItems: "center", gap: "9px", marginBottom: "16px"}}>
-<svg fill="none" height="18" viewBox="0 0 24 24" width="18" className="brand-logo-svg"><rect fill="var(--copper-tint)" height="19" rx="5.5" stroke="var(--copper)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+<svg fill="none" height="18" viewBox="0 0 24 24" width="18" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
 <span style={{fontWeight: "700", fontSize: "13px", color: "var(--ink)"}}>AgentTag</span>
-<span className="mono" style={{marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "10.5px", fontWeight: "600", letterSpacing: ".5px", color: "var(--warn)", padding: "3px 9px", borderRadius: "999px", background: "rgba(194,132,42,.12)", border: "1px solid rgba(194,132,42,.25)"}}><span className="dot" style={{width: "5px", height: "5px", background: "var(--warn)", animation: "aeg-pulse 1.6s ease-in-out infinite"}}></span>STEP-UP</span>
+{(() => {
+  const chip = {
+    pending: { label: "STEP-UP", color: "var(--warn)", bg: "rgba(194,132,42,.12)", bd: "rgba(194,132,42,.25)", pulse: true },
+    approved: { label: "APPROVED", color: "var(--ok)", bg: "color-mix(in srgb, var(--ok) 12%, transparent)", bd: "color-mix(in srgb, var(--ok) 28%, transparent)", pulse: false },
+    denied: { label: "DENIED", color: "var(--bad)", bg: "color-mix(in srgb, var(--bad) 12%, transparent)", bd: "color-mix(in srgb, var(--bad) 28%, transparent)", pulse: false },
+  }[approval];
+  return (
+    <span className="mono" style={{marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "10.5px", fontWeight: "600", letterSpacing: ".5px", color: chip.color, padding: "3px 9px", borderRadius: "999px", background: chip.bg, border: `1px solid ${chip.bd}`, transition: "color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease)"}}>
+      <span className="dot" style={{width: "5px", height: "5px", background: chip.color, ...(chip.pulse ? { animation: "aeg-pulse 1.6s ease-in-out infinite" } : {})}}></span>{chip.label}
+    </span>
+  );
+})()}
 </div>
-<p style={{margin: "0 0 6px", fontSize: "14.5px", lineHeight: "1.5", color: "var(--ink)"}}>Agent <b>Research</b> wants to pay <b style={{color: "var(--copper-deep)"}}>$840.00</b> to <b>Acme Data Inc</b></p>
+<p style={{margin: "0 0 6px", fontSize: "14.5px", lineHeight: "1.5", color: "var(--ink)"}}>Agent <b>Research</b> wants to pay <b style={{color: "var(--crimson-deep)"}}>$840.00</b> to <b>Acme Data Inc</b></p>
 <p style={{margin: "0 0 18px", fontSize: "12.5px", color: "var(--muted)"}}>category: data · <span style={{color: "var(--warn)"}}>new merchant</span> · mnd_01H…</p>
-<div style={{display: "flex", gap: "8px"}}>
-<button className="btn btn-copper" style={{flex: "1", justifyContent: "center", padding: "10px"}}>Approve</button>
-<button className="btn btn-ghost" style={{flex: "none", padding: "10px 16px"}}>Deny</button>
-</div>
+{approval === "pending" ? (
+  <div style={{display: "flex", gap: "8px"}}>
+    <button className="btn btn-crimson" style={{flex: "1", justifyContent: "center", padding: "10px"}} onClick={() => setApproval("approved")}>Approve</button>
+    <button className="btn btn-ghost" style={{flex: "none", padding: "10px 16px"}} onClick={() => setApproval("denied")}>Deny</button>
+  </div>
+) : (
+  <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
+    <span style={{flex: "1", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "10px", fontSize: "13px", fontWeight: "600", borderRadius: "8px", color: approval === "approved" ? "var(--ok)" : "var(--bad)", background: approval === "approved" ? "color-mix(in srgb, var(--ok) 10%, transparent)" : "color-mix(in srgb, var(--bad) 10%, transparent)", border: `1px solid ${approval === "approved" ? "color-mix(in srgb, var(--ok) 30%, transparent)" : "color-mix(in srgb, var(--bad) 30%, transparent)"}`}}>
+      {approval === "approved" ? "✓ Approved & signed" : "✕ Denied"}
+    </span>
+    <button className="btn btn-ghost" style={{flex: "none", padding: "10px 14px"}} onClick={() => setApproval("pending")}>Reset</button>
+  </div>
+)}
 <p style={{margin: "12px 0 0", textAlign: "center", fontSize: "11px", color: "var(--faint)"}}>Signed with your passkey · on-device</p>
 </div>
 </div>
@@ -1384,7 +1594,7 @@ Connect new tool
 <div className="card" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
 <div style={{padding: "30px 32px 26px"}}>
 <div style={{display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px"}}>
-<svg fill="none" height="19" viewBox="0 0 24 24" width="19" className="brand-logo-svg"><rect fill="var(--copper-tint)" height="19" rx="5.5" stroke="var(--copper)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+<svg fill="none" height="19" viewBox="0 0 24 24" width="19" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
 <span style={{fontWeight: "600", fontSize: "18px", color: "var(--ink)"}}>The Passport</span>
 </div>
 <p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>Every agent gets a cryptographic DID — an Ed25519 key that signs its requests, every audit entry, and is the subject of every mandate. Revoke it once and all authority starves.</p>
@@ -1392,11 +1602,11 @@ Connect new tool
 <div style={{marginTop: "auto", padding: "6px 32px 30px"}}>
 <div style={{background: "var(--paper-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--r-md)", padding: "6px 18px"}}>
 <div className="field-row">
-<span className="field-k"><svg fill="none" height="15" style={{opacity: ".55"}} viewBox="0 0 24 24" width="15"><circle cx="12" cy="8" r="3.4" stroke="var(--copper)" strokeWidth="1.6"></circle><path d="M5 19c1.2-3 4-4.5 7-4.5s5.8 1.5 7 4.5" stroke="var(--copper)" strokeLinecap="round" strokeWidth="1.6"></path></svg>Agent DID</span>
+<span className="field-k"><svg fill="none" height="15" style={{opacity: ".55"}} viewBox="0 0 24 24" width="15"><circle cx="12" cy="8" r="3.4" stroke="var(--crimson)" strokeWidth="1.6"></circle><path d="M5 19c1.2-3 4-4.5 7-4.5s5.8 1.5 7 4.5" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="1.6"></path></svg>Agent DID</span>
 <span className="field-v mono" style={{fontSize: "12px"}}>did:key:z6Mk…AGENT</span>
 </div>
 <div className="field-row">
-<span className="field-k"><svg fill="none" height="15" style={{opacity: ".55"}} viewBox="0 0 24 24" width="15"><path d="M12 2.5l7 3v5.5c0 4.2-2.9 7.4-7 8.5-4.1-1.1-7-4.3-7-8.5V5.5l7-3z" stroke="var(--copper)" strokeWidth="1.5"></path></svg>Operator</span>
+<span className="field-k"><svg fill="none" height="15" style={{opacity: ".55"}} viewBox="0 0 24 24" width="15"><path d="M12 2.5l7 3v5.5c0 4.2-2.9 7.4-7 8.5-4.1-1.1-7-4.3-7-8.5V5.5l7-3z" stroke="var(--crimson)" strokeWidth="1.5"></path></svg>Operator</span>
 <span className="field-v mono" style={{fontSize: "12px"}}>did:key:z6Mk…HUMAN</span>
 </div>
 <div className="field-row">
@@ -1418,7 +1628,7 @@ Connect new tool
 <div className="card" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
 <div style={{padding: "30px 32px 26px"}}>
 <div style={{display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px"}}>
-<svg fill="none" height="19" viewBox="0 0 24 24" width="19"><path d="M5 3.5h11l3 3V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" fill="var(--copper-tint)" stroke="var(--copper)" strokeWidth="1.5"></path><path d="M7.5 12l1.8 1.8 3.7-3.8" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"></path></svg>
+<svg fill="none" height="19" viewBox="0 0 24 24" width="19"><path d="M5 3.5h11l3 3V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" fill="var(--crimson-tint)" stroke="var(--crimson)" strokeWidth="1.5"></path><path d="M7.5 12l1.8 1.8 3.7-3.8" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"></path></svg>
 <span style={{fontWeight: "600", fontSize: "18px", color: "var(--ink)"}}>The Mandate</span>
 </div>
 <p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>A human-signed, scoped, expiring grant of authority. Spend caps, allowed merchants, time bounds and the approval line — all expressed as fields. Tune autonomy by editing a mandate, never code.</p>
@@ -1427,7 +1637,7 @@ Connect new tool
 <div style={{background: "var(--paper-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--r-md)", padding: "6px 18px"}}>
 <div className="field-row">
 <span className="field-k">Capability</span>
-<span className="allow-chip"><svg fill="none" height="12" viewBox="0 0 24 24" width="12"><rect height="12" rx="2.5" stroke="var(--copper-deep)" strokeWidth="1.7" width="19" x="2.5" y="6"></rect><path d="M2.5 10h19" stroke="var(--copper-deep)" strokeWidth="1.7"></path></svg>pay</span>
+<span className="allow-chip"><svg fill="none" height="12" viewBox="0 0 24 24" width="12"><rect height="12" rx="2.5" stroke="var(--crimson-deep)" strokeWidth="1.7" width="19" x="2.5" y="6"></rect><path d="M2.5 10h19" stroke="var(--crimson-deep)" strokeWidth="1.7"></path></svg>pay</span>
 </div>
 <div className="field-row" style={{flexDirection: "column", alignItems: "stretch", gap: "10px"}}>
 <span style={{display: "flex", alignItems: "center", justifyContent: "space-between"}}><span className="field-k">Per-transaction cap</span><span className="field-v">$50.00</span></span>
@@ -1489,7 +1699,7 @@ Connect new tool
 </th>
 <th className="col-highlight">
 <div className="cmp-logo-wrap">
-<svg className="cmp-logo-icon" fill="none" style={{stroke: "var(--copper)", fill: "rgba(192, 111, 51, 0.08)", strokeWidth: "1.6"}} viewBox="0 0 24 24"><rect height="19" rx="5.5" stroke="var(--copper)" width="19" x="2.5" y="2.5"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--copper)" height="4" opacity="0.4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--copper)" height="4" opacity="0.4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+<svg className="cmp-logo-icon" fill="none" style={{stroke: "var(--crimson)", fill: "rgba(169, 27, 44, 0.08)", strokeWidth: "1.6"}} viewBox="0 0 24 24"><rect height="19" rx="5.5" stroke="var(--crimson)" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" opacity="0.4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--crimson)" height="4" opacity="0.4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
 <span className="cmp-logo-text">AgentTag</span>
 </div>
 </th>
@@ -1544,7 +1754,7 @@ Connect new tool
 <p style={{maxWidth: "560px", margin: "0 0 38px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Every primitive, the policy engine, and the hash-chained ledger — unlocked for everyone during the public beta. No card, no seats, no governance you have to buy back later.</p>
 <div className="price-grid" style={{display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: "18px", alignItems: "stretch"}}>
 {/* Beta access - primary */}
-<div className="card price-pop" style={{padding: "44px 36px 36px", display: "flex", flexDirection: "column", boxShadow: "0 1px 2px rgba(22,20,14,.04), 0 0 0 1px rgba(187,106,49,.12), 0 26px 50px -26px rgba(155,83,29,.34)"}}>
+<div className="card price-pop" style={{padding: "44px 36px 36px", display: "flex", flexDirection: "column", boxShadow: "0 1px 2px rgba(22,20,14,.04), 0 0 0 1px rgba(200, 45, 65, .12), 0 26px 50px -26px rgba(128, 16, 29, .34)"}}>
 <div className="price-top-bar"></div>
 <div className="price-badge">Recommended</div>
 <div style={{display: "flex", alignItems: "center", justifyContent: "space-between"}}>
@@ -1558,14 +1768,14 @@ Connect new tool
 <p style={{margin: "8px 0 24px", fontSize: "14px", lineHeight: "1.55", color: "var(--muted)"}}>Bring your first agent online and govern it end-to-end — full product, nothing held back.</p>
 <div className="hairline" style={{marginBottom: "22px"}}></div>
 <ul className="beta-feats" style={{listStyle: "none", margin: "0 0 28px", padding: "0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 22px", flex: "1"}}>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>All <b style={{color: "var(--ink)", fontWeight: "600"}}>five</b> primitives, live</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Multiple agent passports</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Full policy engine &amp; step-up</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Passkey approvals on-device</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Hash-chained audit ledger</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Direct line to the founders</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>All <b style={{color: "var(--ink)", fontWeight: "600"}}>five</b> primitives, live</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Multiple agent passports</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Full policy engine &amp; step-up</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Passkey approvals on-device</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Hash-chained audit ledger</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Direct line to the founders</span></li>
 </ul>
-<a className="btn btn-copper" href="#cta" style={{justifyContent: "center"}}>Get beta access →</a>
+<a className="btn btn-crimson btn-cta-new" href="#cta" style={{justifyContent: "center"}}>Get beta access →</a>
 <p style={{margin: "14px 0 0", textAlign: "center", fontSize: "12.5px", color: "var(--faint)"}}>No credit card · cancel anytime · your data stays yours</p>
 </div>
 {/* What happens at GA */}
@@ -1578,13 +1788,61 @@ Connect new tool
 <p style={{margin: "8px 0 24px", fontSize: "14px", lineHeight: "1.55", color: "var(--muted)"}}>When we reach general availability, you pay for autonomy — not seats. Here's our promise to beta users.</p>
 <div className="hairline" style={{marginBottom: "22px"}}></div>
 <ul style={{listStyle: "none", margin: "0 0 28px", padding: "0", display: "flex", flexDirection: "column", gap: "14px", flex: "1"}}>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span><b style={{color: "var(--ink)", fontWeight: "600"}}>30 days'</b> notice before any plan starts</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>A generous free tier that stays free</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Founding-user pricing, locked in</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--copper)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Enterprise SSO, SLA &amp; on-prem when you need it</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span><b style={{color: "var(--ink)", fontWeight: "600"}}>30 days'</b> notice before any plan starts</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>A generous free tier that stays free</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Founding-user pricing, locked in</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Enterprise SSO, SLA &amp; on-prem when you need it</span></li>
 </ul>
 <a className="btn btn-ghost" href="#cta" style={{justifyContent: "center"}}>Talk to the team</a>
 </div>
+</div>
+</section>
+{/* ==================== FAQ ==================== */}
+<section className="aeg-section aeg-wrap" id="faq">
+<div className="eyebrow"><span className="eyebrow-num">07</span><span className="eyebrow-label">FAQ</span></div>
+<h2 className="display" style={{margin: "0 0 14px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Questions, <span className="accent-it">answered.</span></h2>
+<p style={{maxWidth: "560px", margin: "0 0 40px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Everything you need to know about giving an agent its own governed identity.</p>
+<div className="faq-list">
+{faqItems.map((item, i) => {
+  const open = openFaq === i;
+  return (
+    <div className={`faq-item${open ? " is-open" : ""}`} key={i}>
+      <button
+        className="faq-q"
+        type="button"
+        aria-expanded={open}
+        aria-controls={`faq-panel-${i}`}
+        onClick={() => setOpenFaq(open ? null : i)}
+      >
+        <span className="faq-q-text">{item.q}</span>
+        <motion.span
+          className="faq-chevron"
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+          aria-hidden="true"
+        >
+          <svg fill="none" height="18" width="18" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            id={`faq-panel-${i}`}
+            className="faq-a-wrap"
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", duration: 0.4, bounce: 0 }}
+            style={{ overflow: "hidden" }}
+          >
+            <p className="faq-a">{item.a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+})}
 </div>
 </section>
 {/* ==================== CTA ==================== */}
@@ -1602,7 +1860,7 @@ Connect new tool
       </p>
 <form className="cta-form-new" onSubmit={onSubmit}>
 <input aria-label="Email address" className="cta-input-new" id="cta-email" name="email" placeholder="you@company.com" required type="email"/>
-<button className="btn btn-copper btn-cta-new" type="submit">Get beta access →</button>
+<button className="btn btn-crimson btn-cta-new" type="submit">Get beta access →</button>
 </form>
 <p className="cta-footer-note">The human is always the accountable principal. AgentTag makes the line provable.</p>
 </div>
@@ -1614,7 +1872,7 @@ Connect new tool
 <div className="footer-top-row">
 <div className="footer-brand-col">
 <div style={{display: "flex", alignItems: "center", gap: "10px"}}>
-<svg fill="none" height="24" viewBox="0 0 24 24" width="24" className="brand-logo-svg"><rect fill="var(--copper-tint)" height="19" rx="5.5" stroke="var(--copper)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--copper)" height="4" opacity=".4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--copper)" height="4" opacity=".4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--copper)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+<svg fill="none" height="24" viewBox="0 0 24 24" width="24" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
 <span style={{fontWeight: "800", fontSize: "20px", letterSpacing: "-0.3px", color: "var(--ink)", textTransform: "uppercase", fontFamily: "'Bricolage Grotesque', sans-serif"}}>AgentTag</span>
 </div>
 <p className="footer-brand-tagline">The control plane for delegated agent identity. Your agent, its own passport.</p>
@@ -1641,8 +1899,8 @@ Connect new tool
 <a className="footer-link" href="#how">Platform</a>
 <a className="footer-link" href="#pricing">Pricing</a>
 <a className="footer-link" href="#surface">Docs</a>
-<a className="footer-link" href="#">Careers</a>
-<a className="footer-link" href="#">Contact us</a>
+<a className="footer-link" href="mailto:careers@agenttag.ai">Careers</a>
+<a className="footer-link" href="mailto:hello@agenttag.ai">Contact us</a>
 </div>
 <div>
 <div className="footer-col-title">Platform</div>
@@ -1654,17 +1912,17 @@ Connect new tool
 </div>
 <div>
 <div className="footer-col-title">Resources</div>
-<a className="footer-link" href="#">Case Studies</a>
-<a className="footer-link" href="#">Blog &amp; Insights</a>
-<a className="footer-link" href="#">Research</a>
-<a className="footer-link" href="#">FAQ</a>
-<a className="footer-link" href="#">Status</a>
+<a className="footer-link footer-link-soon" role="link" aria-disabled="true">Case Studies<span className="footer-soon">Soon</span></a>
+<a className="footer-link footer-link-soon" role="link" aria-disabled="true">Blog &amp; Insights<span className="footer-soon">Soon</span></a>
+<a className="footer-link footer-link-soon" role="link" aria-disabled="true">Research<span className="footer-soon">Soon</span></a>
+<a className="footer-link" href="#faq">FAQ</a>
+<a className="footer-link" href="https://status.agenttag.ai" target="_blank" rel="noopener noreferrer">Status</a>
 </div>
 <div>
 <div className="footer-col-title">Socials</div>
-<a className="footer-link" href="#">GitHub</a>
-<a className="footer-link" href="#">Discord</a>
-<a className="footer-link" href="#">X (Formerly Twitter)</a>
+<a className="footer-link" href="https://github.com/agenttag" target="_blank" rel="noopener noreferrer">GitHub</a>
+<a className="footer-link" href="https://discord.gg/agenttag" target="_blank" rel="noopener noreferrer">Discord</a>
+<a className="footer-link" href="https://x.com/agenttag" target="_blank" rel="noopener noreferrer">X (Formerly Twitter)</a>
 </div>
 </div>
 {/* Standards / security posture — honest protocol credibility, no fabricated logos */}
@@ -1683,9 +1941,9 @@ Connect new tool
 <div className="footer-bottom-row">
 <div className="footer-copyright">© Copyright 2026 AgentTag.ai</div>
 <div className="footer-legal-links">
-<a className="footer-legal-link" href="#">Terms of Service</a>
-<a className="footer-legal-link" href="#">Privacy Policy</a>
-<a className="footer-legal-link" href="#">Data Platform TOS</a>
+<a className="footer-legal-link footer-link-soon" role="link" aria-disabled="true">Terms of Service<span className="footer-soon">Soon</span></a>
+<a className="footer-legal-link footer-link-soon" role="link" aria-disabled="true">Privacy Policy<span className="footer-soon">Soon</span></a>
+<a className="footer-legal-link footer-link-soon" role="link" aria-disabled="true">Data Platform TOS<span className="footer-soon">Soon</span></a>
 </div>
 </div>
 {/* Watermark background text */}

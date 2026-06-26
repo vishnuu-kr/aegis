@@ -10,7 +10,7 @@ interface Point {
 
 interface WorldMapProps {
   dots?: Array<{ start: Point; end: Point }>
-  /** Arc / endpoint color. Defaults to the Aegis copper. */
+  /** Arc / endpoint color. Defaults to the Aegis crimson. */
   lineColor?: string
   /** Current app theme. Controls dotted-map silhouette color. */
   theme?: "light" | "dark"
@@ -34,7 +34,7 @@ const createCurvedPath = (
 
 export default function WorldMap({
   dots = [],
-  lineColor = "#b84c30",
+  lineColor = "#a91b2c",
   theme = "light",
 }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null)

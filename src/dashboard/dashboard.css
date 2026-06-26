@@ -1,0 +1,314 @@
+/* ============================================================
+   AEGIS APPROVALS DASHBOARD — scoped under .aeg-dash
+   Reuses the landing's warm-editorial design tokens so it
+   matches the marketing site and follows its light/dark theme.
+   ============================================================ */
+.aeg-dash {
+  /* Map dashboard vars onto the global landing tokens (theme-aware). */
+  --d-bg: var(--paper);
+  --d-bg-2: var(--surface);
+  --d-panel: var(--surface-2);
+  --d-panel-2: var(--paper-2);
+  --d-line: var(--line);
+  --d-line-2: color-mix(in srgb, var(--ink) 14%, transparent);
+  --d-ink: var(--ink);
+  --d-muted: var(--muted);
+  --d-faint: var(--faint);
+  --d-crimson: var(--crimson);
+  --d-crimson-2: var(--crimson-deep);
+  --d-ok: var(--ok);
+  --d-warn: var(--warn);
+  --d-bad: var(--bad);
+  --d-info: var(--info);
+  /* neutral overlays that work in both themes */
+  --d-hover: color-mix(in srgb, var(--ink) 5%, transparent);
+  --d-hover-2: color-mix(in srgb, var(--ink) 9%, transparent);
+  --d-soft: color-mix(in srgb, var(--ink) 6%, transparent);
+  --d-track: color-mix(in srgb, var(--ink) 10%, transparent);
+  --d-r: 12px;
+  --d-r-sm: 9px;
+  --d-ease: var(--ease-out, cubic-bezier(.2, 0, 0, 1));
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  background:
+    radial-gradient(900px 460px at 100% -120px, var(--crimson-tint), transparent 70%),
+    var(--d-bg);
+  color: var(--d-ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  z-index: 1;
+  overflow: hidden;
+}
+.aeg-dash *, .aeg-dash *::before, .aeg-dash *::after { box-sizing: border-box; }
+.aeg-dash .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.aeg-dash .tnum { font-variant-numeric: tabular-nums; }
+.aeg-dash .display { font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
+
+/* ---------- Sidebar ---------- */
+.aeg-dash .ad-side {
+  width: 248px;
+  flex: none;
+  background: var(--d-bg-2);
+  border-right: 1px solid var(--d-line);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 14px;
+}
+.aeg-dash .ad-brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 2px; }
+.aeg-dash .ad-brand-mark {
+  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  display: grid; place-items: center;
+  background: linear-gradient(150deg, var(--crimson-br), var(--crimson-deep));
+  color: #fff; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--crimson) 60%, transparent);
+}
+.aeg-dash .ad-brand-name { font-weight: 700; font-size: 17px; letter-spacing: -.02em; font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
+.aeg-dash .ad-brand-sub { font-size: 12px; color: var(--d-faint); margin: 2px 0 18px 8px; }
+
+.aeg-dash .ad-nav { display: flex; flex-direction: column; gap: 2px; }
+.aeg-dash .ad-nav-label {
+  font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--d-faint); padding: 16px 10px 6px; font-weight: 600;
+}
+.aeg-dash .ad-nav-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 10px; border-radius: var(--d-r-sm);
+  color: var(--d-muted); font-weight: 500; font-size: 13.5px;
+  background: transparent; border: 0; width: 100%; text-align: left; cursor: pointer;
+  position: relative;
+  transition: color .18s var(--d-ease), background-color .18s var(--d-ease);
+}
+.aeg-dash .ad-nav-item:hover { color: var(--d-ink); background: var(--d-hover); }
+.aeg-dash .ad-nav-item.is-active { color: var(--crimson); background: var(--crimson-tint); font-weight: 600; }
+.aeg-dash .ad-nav-item.is-active::before {
+  content: ''; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--d-crimson);
+}
+.aeg-dash .ad-nav-item svg { width: 17px; height: 17px; flex: none; }
+.aeg-dash .ad-nav-badge {
+  margin-left: auto; font-size: 11px; font-weight: 700; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 9px; display: grid; place-items: center;
+  background: var(--d-crimson); color: #fff;
+}
+
+.aeg-dash .ad-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.aeg-dash .ad-theme-toggle {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 9px 10px; border-radius: var(--d-r-sm); border: 1px solid var(--d-line);
+  background: transparent; color: var(--d-muted); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+  transition: color .16s var(--d-ease), background-color .16s var(--d-ease), border-color .16s var(--d-ease);
+}
+.aeg-dash .ad-theme-toggle:hover { color: var(--d-ink); background: var(--d-hover); border-color: var(--d-line-2); }
+.aeg-dash .ad-theme-toggle svg { width: 16px; height: 16px; }
+
+.aeg-dash .ad-agentcard {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px; border-radius: var(--d-r-sm); border: 1px solid var(--d-line);
+  background: var(--d-panel); box-shadow: var(--shadow-card);
+}
+.aeg-dash .ad-agentcard .av {
+  width: 30px; height: 30px; border-radius: 7px; flex: none; display: grid; place-items: center;
+  background: var(--crimson-tint); border: 1px solid color-mix(in srgb, var(--crimson) 22%, transparent); color: var(--crimson);
+}
+.aeg-dash .ad-agentcard b { font-size: 12.5px; font-weight: 600; display: block; }
+.aeg-dash .ad-agentcard span { font-size: 11px; color: var(--d-faint); }
+
+/* ---------- Main ---------- */
+.aeg-dash .ad-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.aeg-dash .ad-topbar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 20px 28px; border-bottom: 1px solid var(--d-line); flex: none;
+}
+.aeg-dash .ad-topbar h1 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 0; font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
+.aeg-dash .ad-topbar p { margin: 4px 0 0; font-size: 13.5px; color: var(--d-faint); }
+.aeg-dash .ad-topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.aeg-dash .ad-scroll { flex: 1; overflow-y: auto; padding: 28px; }
+.aeg-dash .ad-scroll::-webkit-scrollbar { width: 10px; }
+.aeg-dash .ad-scroll::-webkit-scrollbar-thumb { background: var(--d-track); border-radius: 8px; border: 3px solid var(--d-bg); }
+
+/* ---------- Cards & surfaces ---------- */
+.aeg-dash .ad-card {
+  background: var(--d-panel); border: 1px solid var(--d-line); border-radius: var(--d-r);
+  box-shadow: var(--shadow-card);
+  transition: border-color .2s var(--d-ease), transform .2s var(--d-ease), box-shadow .2s var(--d-ease);
+}
+.aeg-dash .ad-card.pad { padding: 20px; }
+.aeg-dash .ad-card.hover:hover { border-color: color-mix(in srgb, var(--crimson) 22%, var(--line)); transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.aeg-dash .ad-grid { display: grid; gap: 16px; }
+.aeg-dash .ad-stat-label { font-size: 12.5px; color: var(--d-muted); display: flex; align-items: center; gap: 8px; }
+.aeg-dash .ad-stat-value { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin: 10px 0 4px; font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
+.aeg-dash .ad-stat-delta { font-size: 12px; font-weight: 600; }
+.aeg-dash .ad-stat-ico { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--crimson-tint); color: var(--d-crimson); }
+
+.aeg-dash .ad-section-title { font-size: 14px; font-weight: 650; margin: 0 0 2px; }
+.aeg-dash .ad-section-sub { font-size: 12.5px; color: var(--d-faint); margin: 0 0 16px; }
+
+/* ---------- Buttons ---------- */
+.aeg-dash .ad-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1;
+  padding: 9px 14px; border-radius: 999px; border: 1px solid transparent; cursor: pointer;
+  transition: background-color .16s var(--d-ease), border-color .16s var(--d-ease), color .16s var(--d-ease), transform .12s var(--d-ease), opacity .16s var(--d-ease), box-shadow .16s var(--d-ease);
+}
+.aeg-dash .ad-btn svg { width: 15px; height: 15px; }
+.aeg-dash .ad-btn:active { transform: scale(.96); }
+.aeg-dash .ad-btn:disabled { opacity: .45; cursor: not-allowed; }
+.aeg-dash .ad-btn-primary { background: linear-gradient(135deg, var(--crimson-deep), var(--crimson)); color: #fff; box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--crimson) 70%, transparent); }
+.aeg-dash .ad-btn-primary:hover { filter: brightness(1.07); }
+.aeg-dash .ad-btn-ghost { background: transparent; border-color: var(--d-line-2); color: var(--d-ink); }
+.aeg-dash .ad-btn-ghost:hover { background: var(--d-hover); border-color: color-mix(in srgb, var(--ink) 24%, transparent); }
+.aeg-dash .ad-btn-subtle { background: var(--d-soft); color: var(--d-ink); }
+.aeg-dash .ad-btn-subtle:hover { background: var(--d-hover-2); }
+.aeg-dash .ad-btn-danger { background: transparent; border-color: color-mix(in srgb, var(--bad) 42%, transparent); color: var(--d-bad); }
+.aeg-dash .ad-btn-danger:hover { background: color-mix(in srgb, var(--bad) 12%, transparent); border-color: color-mix(in srgb, var(--bad) 60%, transparent); }
+.aeg-dash .ad-btn-ok { background: var(--d-ok); color: #fff; box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--ok) 70%, transparent); }
+.aeg-dash .ad-btn-ok:hover { filter: brightness(1.06); }
+.aeg-dash .ad-btn.sm { padding: 6px 11px; font-size: 12px; }
+.aeg-dash .ad-btn.block { width: 100%; }
+.aeg-dash .ad-iconbtn {
+  width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center;
+  background: transparent; border: 1px solid var(--d-line); color: var(--d-muted); cursor: pointer;
+  transition: background-color .16s var(--d-ease), color .16s var(--d-ease), border-color .16s var(--d-ease);
+}
+.aeg-dash .ad-iconbtn:hover { background: var(--d-hover); color: var(--d-ink); border-color: var(--d-line-2); }
+.aeg-dash .ad-iconbtn svg { width: 16px; height: 16px; }
+
+/* ---------- Chips ---------- */
+.aeg-dash .ad-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; letter-spacing: .01em;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+}
+.aeg-dash .ad-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.aeg-dash .ad-chip.ok { color: var(--d-ok); background: color-mix(in srgb, var(--ok) 13%, transparent); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
+.aeg-dash .ad-chip.warn { color: var(--d-warn); background: color-mix(in srgb, var(--warn) 14%, transparent); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.aeg-dash .ad-chip.bad { color: var(--d-bad); background: color-mix(in srgb, var(--bad) 13%, transparent); border-color: color-mix(in srgb, var(--bad) 28%, transparent); }
+.aeg-dash .ad-chip.info { color: var(--d-info); background: color-mix(in srgb, var(--info) 13%, transparent); border-color: color-mix(in srgb, var(--info) 28%, transparent); }
+.aeg-dash .ad-chip.muted { color: var(--d-faint); background: var(--d-soft); border-color: var(--d-line); }
+
+/* ---------- Toggle ---------- */
+.aeg-dash .ad-toggle {
+  width: 38px; height: 22px; border-radius: 999px; border: 0; cursor: pointer; padding: 0; flex: none;
+  background: color-mix(in srgb, var(--ink) 18%, transparent); position: relative; transition: background-color .2s var(--d-ease);
+}
+.aeg-dash .ad-toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .2s var(--d-ease);
+}
+.aeg-dash .ad-toggle.on { background: var(--d-crimson); }
+.aeg-dash .ad-toggle.on::after { transform: translateX(16px); }
+
+/* ---------- Rows / lists ---------- */
+.aeg-dash .ad-row {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  border: 1px solid var(--d-line); border-radius: var(--d-r-sm); background: var(--d-panel);
+  box-shadow: var(--shadow-card);
+  transition: border-color .16s var(--d-ease), background-color .16s var(--d-ease);
+}
+.aeg-dash .ad-row:hover { border-color: var(--d-line-2); }
+.aeg-dash .ad-row-ico {
+  width: 38px; height: 38px; border-radius: 9px; flex: none; display: grid; place-items: center;
+  background: var(--d-panel-2); border: 1px solid var(--d-line); color: var(--d-muted);
+}
+.aeg-dash .ad-row-name { font-weight: 600; font-size: 13.5px; }
+.aeg-dash .ad-row-desc { font-size: 12px; color: var(--d-faint); margin-top: 2px; }
+.aeg-dash .ad-stack { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Table ---------- */
+.aeg-dash .ad-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.aeg-dash .ad-table th {
+  text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--d-faint); font-weight: 600; padding: 11px 14px; border-bottom: 1px solid var(--d-line);
+}
+.aeg-dash .ad-table td { padding: 12px 14px; border-bottom: 1px solid var(--d-line); color: var(--d-ink); }
+.aeg-dash .ad-table tbody tr { transition: background-color .14s var(--d-ease); }
+.aeg-dash .ad-table tbody tr:hover { background: var(--d-hover); }
+.aeg-dash .ad-table tbody tr:last-child td { border-bottom: 0; }
+
+/* ---------- Progress / meter ---------- */
+.aeg-dash .ad-meter { height: 6px; border-radius: 4px; background: var(--d-track); overflow: hidden; }
+.aeg-dash .ad-meter > span { display: block; height: 100%; background: linear-gradient(90deg, var(--crimson-deep), var(--crimson)); border-radius: 4px; transition: width .5s var(--d-ease); }
+
+/* ---------- Empty state ---------- */
+.aeg-dash .ad-empty { display: grid; place-items: center; text-align: center; padding: 56px 20px; gap: 8px; }
+.aeg-dash .ad-empty .ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--crimson-tint); color: var(--d-crimson); }
+.aeg-dash .ad-empty h3 { margin: 6px 0 0; font-size: 15px; font-weight: 650; }
+.aeg-dash .ad-empty p { margin: 0; font-size: 13px; color: var(--d-faint); max-width: 320px; }
+
+/* ---------- Inputs ---------- */
+.aeg-dash .ad-input, .aeg-dash .ad-select {
+  width: 100%; padding: 9px 12px; border-radius: var(--d-r-sm);
+  background: var(--d-bg); border: 1px solid var(--d-line-2); color: var(--d-ink);
+  font-family: inherit; font-size: 13px; transition: border-color .16s var(--d-ease), box-shadow .16s var(--d-ease);
+}
+.aeg-dash .ad-input::placeholder { color: var(--d-faint); }
+.aeg-dash .ad-input:focus, .aeg-dash .ad-select:focus {
+  outline: none; border-color: var(--d-crimson); box-shadow: 0 0 0 3px color-mix(in srgb, var(--crimson) 18%, transparent);
+}
+.aeg-dash .ad-field-label { font-size: 12.5px; font-weight: 600; color: var(--d-muted); margin-bottom: 7px; display: block; }
+.aeg-dash .ad-search { display: flex; align-items: center; gap: 8px; padding: 7px 11px; border-radius: var(--d-r-sm); background: var(--d-bg); border: 1px solid var(--d-line-2); min-width: 220px; }
+.aeg-dash .ad-search:focus-within { border-color: var(--d-crimson); box-shadow: 0 0 0 3px color-mix(in srgb, var(--crimson) 16%, transparent); }
+.aeg-dash .ad-search input { flex: 1; background: transparent; border: 0; outline: none; color: var(--d-ink); font-family: inherit; font-size: 13px; }
+.aeg-dash .ad-search svg { width: 15px; height: 15px; color: var(--d-faint); }
+
+/* ---------- Segmented control ---------- */
+.aeg-dash .ad-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--d-r-sm); background: var(--d-soft); border: 1px solid var(--d-line); }
+.aeg-dash .ad-seg button { border: 0; background: transparent; color: var(--d-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 7px; cursor: pointer; transition: background-color .16s var(--d-ease), color .16s var(--d-ease); }
+.aeg-dash .ad-seg button.is-active { background: var(--d-panel); color: var(--crimson); box-shadow: var(--shadow-card); }
+
+/* ---------- Toasts ---------- */
+.aeg-dash .ad-toasts { position: fixed; right: 22px; bottom: 22px; display: flex; flex-direction: column; gap: 10px; z-index: 60; }
+.aeg-dash .ad-toast {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; min-width: 240px;
+  border-radius: var(--d-r-sm); background: var(--d-panel); border: 1px solid var(--d-line-2);
+  box-shadow: var(--shadow-lift); font-size: 13px; font-weight: 500; color: var(--d-ink);
+}
+.aeg-dash .ad-toast .bar { width: 3px; align-self: stretch; border-radius: 3px; }
+.aeg-dash .ad-toast.ok .bar { background: var(--d-ok); }
+.aeg-dash .ad-toast.bad .bar { background: var(--d-bad); }
+.aeg-dash .ad-toast.info .bar { background: var(--d-info); }
+
+/* ---------- Wizard ---------- */
+.aeg-dash .ad-wizmask { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(10, 9, 12, .5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 24px; }
+.aeg-dash .ad-wiz { width: 100%; max-width: 880px; background: var(--d-panel); border: 1px solid var(--d-line-2); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-lift); display: grid; grid-template-columns: 240px 1fr; min-height: 520px; }
+.aeg-dash .ad-wiz-rail { background: var(--d-bg-2); border-right: 1px solid var(--d-line); padding: 22px 18px; display: flex; flex-direction: column; gap: 6px; }
+.aeg-dash .ad-wiz-step { display: flex; align-items: center; gap: 11px; padding: 10px; border-radius: var(--d-r-sm); background: transparent; border: 0; width: 100%; text-align: left; cursor: pointer; color: var(--d-muted); transition: background-color .16s var(--d-ease), color .16s var(--d-ease); }
+.aeg-dash .ad-wiz-step:hover { background: var(--d-hover); }
+.aeg-dash .ad-wiz-step.is-active { background: var(--crimson-tint); color: var(--crimson); }
+.aeg-dash .ad-wiz-step.done { color: var(--d-ink); }
+.aeg-dash .ad-wiz-num { width: 24px; height: 24px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--d-soft); border: 1px solid var(--d-line-2); }
+.aeg-dash .ad-wiz-step.is-active .ad-wiz-num { background: var(--d-crimson); border-color: var(--d-crimson); color: #fff; }
+.aeg-dash .ad-wiz-step.done .ad-wiz-num { background: color-mix(in srgb, var(--ok) 16%, transparent); border-color: color-mix(in srgb, var(--ok) 40%, transparent); color: var(--d-ok); }
+.aeg-dash .ad-wiz-step b { font-size: 13px; font-weight: 600; }
+.aeg-dash .ad-wiz-step span { font-size: 11px; color: var(--d-faint); }
+.aeg-dash .ad-wiz-body { padding: 26px 30px; display: flex; flex-direction: column; }
+.aeg-dash .ad-wiz-body h2 { margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -.02em; font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
+.aeg-dash .ad-wiz-body .lead { margin: 0 0 20px; color: var(--d-muted); font-size: 13.5px; line-height: 1.6; }
+.aeg-dash .ad-wiz-foot { margin-top: auto; padding-top: 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* ---------- Notice banner ---------- */
+.aeg-dash .ad-banner { display: flex; gap: 12px; padding: 14px 16px; border-radius: var(--d-r); font-size: 13px; line-height: 1.55; }
+.aeg-dash .ad-banner.warn { background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 28%, transparent); color: color-mix(in srgb, var(--warn) 88%, var(--ink)); }
+.aeg-dash .ad-banner.info { background: color-mix(in srgb, var(--info) 9%, transparent); border: 1px solid color-mix(in srgb, var(--info) 26%, transparent); color: color-mix(in srgb, var(--info) 85%, var(--ink)); }
+
+/* ---------- Animations ---------- */
+@keyframes ad-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.aeg-dash .ad-rise { animation: ad-rise .4s var(--d-ease) both; }
+@keyframes ad-toast-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.aeg-dash .ad-toast { animation: ad-toast-in .28s var(--d-ease) both; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 860px) {
+  .aeg-dash .ad-side { width: 68px; padding: 16px 8px; }
+  .aeg-dash .ad-brand-name, .aeg-dash .ad-brand-sub, .aeg-dash .ad-nav-item span, .aeg-dash .ad-nav-label, .aeg-dash .ad-agentcard b, .aeg-dash .ad-agentcard span, .aeg-dash .ad-theme-toggle span { display: none; }
+  .aeg-dash .ad-nav-item, .aeg-dash .ad-theme-toggle { justify-content: center; }
+  .aeg-dash .ad-wiz { grid-template-columns: 1fr; }
+  .aeg-dash .ad-wiz-rail { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aeg-dash .ad-rise, .aeg-dash .ad-toast { animation: none; }
+  .aeg-dash * { transition: none !important; }
+}
