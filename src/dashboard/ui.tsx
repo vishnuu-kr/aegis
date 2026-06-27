@@ -1,4 +1,5 @@
 import { useStore } from "./data";
+import { AnimatePresence, motion } from "framer-motion";
 
 type BtnVariant = "primary" | "ghost" | "subtle" | "danger" | "ok";
 
@@ -119,15 +120,23 @@ export function PageHeader({
 
 export function Toasts() {
   const { toasts } = useStore();
-  if (!toasts.length) return null;
   return (
     <div className="ad-toasts">
-      {toasts.map((t) => (
-        <div key={t.id} className={`ad-toast ${t.tone}`}>
-          <span className="bar" />
-          {t.msg}
-        </div>
-      ))}
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            className={`ad-toast ${t.tone}`}
+            initial={{ opacity: 0, x: 24, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ type: "spring", duration: 0.32, bounce: 0 }}
+          >
+            <span className="bar" />
+            {t.msg}
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

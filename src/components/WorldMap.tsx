@@ -34,7 +34,7 @@ const createCurvedPath = (
 
 export default function WorldMap({
   dots = [],
-  lineColor = "#a91b2c",
+  lineColor = "#000000",
   theme = "light",
 }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -44,7 +44,7 @@ export default function WorldMap({
     const map = new DottedMap({ height: 60, grid: "diagonal" })
     return map.getSVG({
       radius: 0.22,
-      color: theme === "dark" ? "#ffffff2e" : "#16140f3d",
+      color: theme === "dark" ? "#ffffff2e" : "#1313133d",
       shape: "circle",
       backgroundColor: "transparent",
     })

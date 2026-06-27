@@ -5,6 +5,7 @@ import {
 import { useStore } from "./data";
 import { Btn, Chip, Toggle } from "./ui";
 import type { RouteKey } from "./Dashboard";
+import { motion } from "framer-motion";
 
 const STEPS = [
   { title: "License", optional: true },
@@ -16,7 +17,15 @@ const STEPS = [
 
 export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFinish: () => void; onNav: (k: RouteKey) => void }) {
   const { providers, toggleProvider, updateSettings, addDevice, toast } = useStore();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => Number(localStorage.getItem("aeg-dash-wizard-step") || "0"));
+
+  const setStepPersisted = (s: number | ((prev: number) => number)) => {
+    setStep((prev) => {
+      const nextVal = typeof s === "function" ? s(prev) : s;
+      localStorage.setItem("aeg-dash-wizard-step", String(nextVal));
+      return nextVal;
+    });
+  };
 
   // step-local state
   const [license, setLicense] = useState("");
@@ -25,25 +34,41 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [client, setClient] = useState<"claude" | "chatgpt" | "custom">("claude");
+  const [copied, setCopied] = useState(false);
 
   const setupProviders = providers.filter((p) => ["stripe", "twilio", "github"].includes(p.id));
   const last = step === STEPS.length - 1;
 
-  const next = () => (last ? onFinish() : setStep((s) => s + 1));
-  const back = () => setStep((s) => Math.max(0, s - 1));
+  const next = () => (last ? onFinish() : setStepPersisted((s) => s + 1));
+  const back = () => setStepPersisted((s) => Math.max(0, s - 1));
 
   const cmd = `aegis mcp add --client ${client} --agent "${agentName}"`;
 
   return (
-    <div className="ad-wizmask" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="ad-wiz ad-rise" role="dialog" aria-label="Aegis setup wizard">
+    <motion.div
+      className="ad-wizmask"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.div
+        className="ad-wiz"
+        role="dialog"
+        aria-label="Aegis setup wizard"
+        initial={{ opacity: 0, scale: 0.95, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+      >
         <div className="ad-wiz-rail">
           <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 4px 18px" }}>
             <span className="ad-brand-mark" style={{ width: 26, height: 26 }}><Sparkles size={14} /></span>
             <b style={{ fontSize: 14 }}>Setup</b>
           </div>
           {STEPS.map((s, i) => (
-            <button key={s.title} className={`ad-wiz-step${i === step ? " is-active" : i < step ? " done" : ""}`} onClick={() => setStep(i)}>
+            <button key={s.title} className={`ad-wiz-step${i === step ? " is-active" : i < step ? " done" : ""}`} onClick={() => setStepPersisted(i)}>
               <span className="ad-wiz-num">{i < step ? <Check size={13} /> : i + 1}</span>
               <span style={{ display: "flex", flexDirection: "column" }}>
                 <b>{s.title}</b>
@@ -145,7 +170,14 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 9, background: "var(--d-bg)", border: "1px solid var(--d-line-2)" }}>
                 <code className="mono" style={{ flex: 1, fontSize: 12.5, color: "var(--d-ink)" }}><span style={{ color: "var(--d-faint)" }}>$</span> {cmd}</code>
-                <button className="ad-iconbtn" aria-label="Copy command" onClick={() => { navigator.clipboard?.writeText(cmd); toast("Copied to clipboard", "ok"); }}><Copy /></button>
+                <div style={{ position: "relative" }}>
+                  <button className="ad-iconbtn" aria-label="Copy command" onClick={() => { navigator.clipboard?.writeText(cmd); toast("Copied to clipboard", "ok"); setCopied(true); setTimeout(() => setCopied(false), 2000); }}><Copy /></button>
+                  {copied && (
+                    <div className="copied-tooltip" style={{ position: "absolute", bottom: "100%", right: "50%", transform: "translateX(50%) translateY(-6px)", background: "var(--d-crimson)", color: "var(--d-bg)", padding: "4px 8px", borderRadius: 4, fontSize: 11, fontWeight: "bold", zIndex: 100, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+                      Copied!
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -155,7 +187,7 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
               {step > 0 && <Btn variant="ghost" icon={<ArrowLeft size={15} />} onClick={back}>Back</Btn>}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              {STEPS[step].optional && !last && <Btn variant="subtle" onClick={() => setStep((s) => s + 1)}>Skip this step</Btn>}
+              {STEPS[step].optional && !last && <Btn variant="subtle" onClick={() => setStepPersisted((s) => s + 1)}>Skip this step</Btn>}
               {last ? (
                 <Btn variant="primary" icon={<Check size={15} />} onClick={() => { toast("Setup complete", "ok"); onFinish(); onNav("dashboard"); }}>Finish setup</Btn>
               ) : (
@@ -164,7 +196,7 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

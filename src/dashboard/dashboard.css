@@ -79,14 +79,11 @@
   color: var(--d-muted); font-weight: 500; font-size: 13.5px;
   background: transparent; border: 0; width: 100%; text-align: left; cursor: pointer;
   position: relative;
-  transition: color .18s var(--d-ease), background-color .18s var(--d-ease);
+  transition: color .18s var(--d-ease), background-color .18s var(--d-ease), transform .15s ease-out;
 }
 .aeg-dash .ad-nav-item:hover { color: var(--d-ink); background: var(--d-hover); }
-.aeg-dash .ad-nav-item.is-active { color: var(--crimson); background: var(--crimson-tint); font-weight: 600; }
-.aeg-dash .ad-nav-item.is-active::before {
-  content: ''; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px;
-  border-radius: 0 3px 3px 0; background: var(--d-crimson);
-}
+.aeg-dash .ad-nav-item:active { transform: scale(0.96); }
+.aeg-dash .ad-nav-item.is-active { color: var(--crimson); font-weight: 600; }
 .aeg-dash .ad-nav-item svg { width: 17px; height: 17px; flex: none; }
 .aeg-dash .ad-nav-badge {
   margin-left: auto; font-size: 11px; font-weight: 700; min-width: 18px; height: 18px;
@@ -99,9 +96,10 @@
   display: flex; align-items: center; gap: 9px; width: 100%;
   padding: 9px 10px; border-radius: var(--d-r-sm); border: 1px solid var(--d-line);
   background: transparent; color: var(--d-muted); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
-  transition: color .16s var(--d-ease), background-color .16s var(--d-ease), border-color .16s var(--d-ease);
+  transition: color .16s var(--d-ease), background-color .16s var(--d-ease), border-color .16s var(--d-ease), transform .15s ease-out;
 }
 .aeg-dash .ad-theme-toggle:hover { color: var(--d-ink); background: var(--d-hover); border-color: var(--d-line-2); }
+.aeg-dash .ad-theme-toggle:active { transform: scale(0.96); }
 .aeg-dash .ad-theme-toggle svg { width: 16px; height: 16px; }
 
 .aeg-dash .ad-agentcard {
@@ -164,16 +162,17 @@
 .aeg-dash .ad-btn-subtle:hover { background: var(--d-hover-2); }
 .aeg-dash .ad-btn-danger { background: transparent; border-color: color-mix(in srgb, var(--bad) 42%, transparent); color: var(--d-bad); }
 .aeg-dash .ad-btn-danger:hover { background: color-mix(in srgb, var(--bad) 12%, transparent); border-color: color-mix(in srgb, var(--bad) 60%, transparent); }
-.aeg-dash .ad-btn-ok { background: var(--d-ok); color: #fff; box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--ok) 70%, transparent); }
+.aeg-dash .ad-btn-ok { background: var(--d-ok); color: var(--d-btn-ok-text, #fff); box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--ok) 70%, transparent); }
 .aeg-dash .ad-btn-ok:hover { filter: brightness(1.06); }
 .aeg-dash .ad-btn.sm { padding: 6px 11px; font-size: 12px; }
 .aeg-dash .ad-btn.block { width: 100%; }
 .aeg-dash .ad-iconbtn {
   width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center;
   background: transparent; border: 1px solid var(--d-line); color: var(--d-muted); cursor: pointer;
-  transition: background-color .16s var(--d-ease), color .16s var(--d-ease), border-color .16s var(--d-ease);
+  transition: background-color .16s var(--d-ease), color .16s var(--d-ease), border-color .16s var(--d-ease), transform .12s var(--d-ease);
 }
 .aeg-dash .ad-iconbtn:hover { background: var(--d-hover); color: var(--d-ink); border-color: var(--d-line-2); }
+.aeg-dash .ad-iconbtn:active { transform: scale(0.95); }
 .aeg-dash .ad-iconbtn svg { width: 16px; height: 16px; }
 
 /* ---------- Chips ---------- */
@@ -297,8 +296,6 @@
 /* ---------- Animations ---------- */
 @keyframes ad-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .aeg-dash .ad-rise { animation: ad-rise .4s var(--d-ease) both; }
-@keyframes ad-toast-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
-.aeg-dash .ad-toast { animation: ad-toast-in .28s var(--d-ease) both; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
@@ -309,6 +306,6 @@
   .aeg-dash .ad-wiz-rail { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .aeg-dash .ad-rise, .aeg-dash .ad-toast { animation: none; }
+  .aeg-dash .ad-rise { animation: none; }
   .aeg-dash * { transition: none !important; }
 }

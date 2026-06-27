@@ -1,22 +1,24 @@
 import { useMemo, useState } from "react";
 import {
-  Inbox as InboxIcon, DollarSign, Activity, Cpu, ShieldCheck,
-  Pause, Play, Ban, Plus, Check, X, Clock, AlertTriangle, Search, Download,
+  Cpu, ShieldCheck, Inbox as InboxIcon, DollarSign, Activity, AlertTriangle,
+  Pause, Play, Ban, Plus, Check, X, Clock, Search, Download,
   CreditCard, MessageSquare, Cloud, Database, Laptop, Smartphone, KeyRound,
-  Trash2, Bell, Server, Wand2,
+  Trash2, Bell, Server, Wand2, MoreHorizontal, ArrowUpRight,
+  ChevronDown, LayoutGrid, Sun,
 } from "lucide-react";
 import {
   useStore, verdictTone, riskTone, timeAgo, money,
-  type LedgerEntry, type Provider, type Device,
+  type Provider, type Device,
 } from "./data";
-import { Btn, IconBtn, Chip, Toggle, StatCard, EmptyState, PageHeader } from "./ui";
+import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader } from "./ui";
 import type { RouteKey } from "./Dashboard";
 
 const statusTone = (s: string) => (s === "active" ? "ok" : s === "paused" ? "warn" : "bad");
 
 // ============================================================
-// Dashboard / Overview
+// Dashboard / Overview (Efferd Design Style + AgentTag Content)
 // ============================================================
+
 export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
   const { agents, approvals, ledger, settings } = useStore();
   const spend = agents.reduce((s, a) => s + a.spendUsed, 0);
@@ -25,17 +27,96 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
   const recent = [...ledger].slice(-7).reverse();
 
   return (
-    <>
-      <PageHeader
-        title="Dashboard"
-        subtitle="Live overview of every governed agent."
-        actions={
-          <Btn variant="primary" icon={<InboxIcon size={15} />} onClick={() => onNav("inbox")}>
-            Review approvals{approvals.length ? ` · ${approvals.length}` : ""}
-          </Btn>
-        }
-      />
-      <div className="ad-scroll">
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, background: "transparent" }}>
+      {/* Top Header Bar */}
+      <div className="ad-topbar" style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "16px 28px",
+        borderBottom: "1px solid var(--d-line)",
+        background: "color-mix(in srgb, var(--d-bg-2) 50%, transparent)",
+        backdropFilter: "blur(8px)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 500, color: "var(--d-muted)" }}>
+          <LayoutGrid size={15} />
+          <h1 style={{ margin: 0, fontSize: "14px", fontWeight: 500, color: "var(--d-muted)", fontFamily: "inherit", letterSpacing: "normal" }}>Dashboard</h1>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "var(--d-soft)",
+            border: "1px solid var(--d-line)",
+            borderRadius: "6px",
+            padding: "5px 12px",
+            width: "160px"
+          }}>
+            <Search size={13} style={{ color: "var(--d-faint)" }} />
+            <span style={{ fontSize: "12px", color: "var(--d-faint)", flex: 1 }}>Find</span>
+            <span style={{
+              fontSize: "9px",
+              background: "var(--d-hover)",
+              border: "1px solid var(--d-line)",
+              borderRadius: "3px",
+              padding: "1px 4px",
+              color: "var(--d-faint)"
+            }}>F</span>
+          </div>
+          <div style={{
+            width: "24px",
+            height: "24px",
+            borderRadius: "50%",
+            background: "#fff",
+            overflow: "hidden",
+            display: "grid",
+            placeItems: "center"
+          }}>
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&auto=format&fit=crop&q=80" alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="ad-scroll" style={{ padding: "24px 28px" }}>
+        {/* Welcome Row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <Sun size={20} style={{ color: "var(--d-muted)" }} />
+            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600, color: "var(--d-ink)", letterSpacing: "-0.01em" }}>Welcome back</h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <button style={{
+              background: "var(--d-panel)",
+              border: "1px solid var(--d-line)",
+              borderRadius: "6px",
+              padding: "5px 12px",
+              fontSize: "12px",
+              color: "var(--d-muted)",
+              fontWeight: 500,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              cursor: "pointer"
+            }}>
+              <span>Last 4 hours</span>
+              <ChevronDown size={12} />
+            </button>
+            <button style={{
+              background: "var(--d-panel)",
+              border: "1px solid var(--d-line)",
+              borderRadius: "6px",
+              padding: "5px 8px",
+              fontSize: "12px",
+              color: "var(--d-muted)",
+              cursor: "pointer"
+            }}>
+              <MoreHorizontal size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Warning Banner if Enforcement is off */}
         {!settings.enforcement && (
           <div className="ad-banner warn ad-rise" style={{ marginBottom: 20 }}>
             <AlertTriangle size={18} style={{ flex: "none", marginTop: 1 }} />
@@ -45,44 +126,138 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
           </div>
         )}
 
-        <div className="ad-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 16 }}>
-          <StatCard label="Pending approvals" value={approvals.length} icon={<InboxIcon size={16} />} delta={approvals.length ? "needs review" : "all clear"} deltaTone={approvals.length ? "bad" : "ok"} />
-          <StatCard label="Active agents" value={`${activeAgents}/${agents.length}`} icon={<Cpu size={16} />} delta="governed" />
-          <StatCard label="Spend this month" value={money(spend)} icon={<DollarSign size={16} />} delta="across mandates" deltaTone="muted" />
-          <StatCard label="Decisions today" value={decisionsToday} icon={<Activity size={16} />} delta="+12 vs yesterday" />
-        </div>
-
-        <div className="ad-grid" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
-          <div className="ad-card pad ad-rise">
-            <div style={{ display: "flex", alignItems: "center", marginBottom: 14 }}>
-              <div>
-                <div className="ad-section-title">Live audit ledger</div>
-                <div className="ad-section-sub" style={{ margin: 0 }}>Hash-chained · tamper-evident</div>
-              </div>
-              <Chip tone="ok" dot>LIVE</Chip>
-              <Btn sm variant="ghost" style={{ marginLeft: "auto" }} onClick={() => onNav("history")}>View all</Btn>
+        {/* Metrics Grid (4 Columns) */}
+        <div className="ad-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          {/* Card 1: Pending Approvals */}
+          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span>Pending approvals</span>
+              <InboxIcon size={14} style={{ color: "var(--d-faint)" }} />
             </div>
-            <div className="ad-stack">
-              {recent.map((e) => <LedgerRow key={e.seq} e={e} />)}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px", width: "100%" }}>
+              <span className="mono" style={{ fontSize: "24px", fontWeight: 700, color: "var(--d-ink)" }}>{approvals.length}</span>
+              <span style={{ marginLeft: "auto" }}>
+                <Chip tone={approvals.length ? "warn" : "ok"}>
+                  {approvals.length ? "needs review" : "all clear"}
+                </Chip>
+              </span>
+            </div>
+            <div style={{ marginTop: "12px", height: "20px" }}>
+              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
+                <path d={approvals.length ? "M 0,18 Q 15,5 30,12 T 60,8 T 90,15 T 100,5" : "M 0,18 L 100,18"} fill="none" stroke={approvals.length ? "color-mix(in srgb, var(--d-warn) 40%, transparent)" : "color-mix(in srgb, var(--d-ok) 40%, transparent)"} strokeWidth="1.2" />
+              </svg>
             </div>
           </div>
 
-          <div className="ad-card pad ad-rise">
-            <div className="ad-section-title">Agents</div>
-            <div className="ad-section-sub">Status & monthly spend</div>
-            <div className="ad-stack">
+          {/* Card 2: Active Agents */}
+          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span>Active agents</span>
+              <Cpu size={14} style={{ color: "var(--d-faint)" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
+              <span className="mono" style={{ fontSize: "24px", fontWeight: 700, color: "var(--d-ink)" }}>{`${activeAgents}/${agents.length}`}</span>
+              <span style={{ fontSize: "11px", color: "var(--d-faint)", marginLeft: "auto" }}>
+                governed
+              </span>
+            </div>
+            <div style={{ marginTop: "12px", height: "20px" }}>
+              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
+                <path d="M 0,10 L 20,10 L 40,8 L 60,12 L 80,10 L 100,10" fill="none" stroke="var(--d-line)" strokeWidth="1.2" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card 3: Spend this month */}
+          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span>Spend this month</span>
+              <DollarSign size={14} style={{ color: "var(--d-faint)" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
+              <span className="mono" style={{ fontSize: "22px", fontWeight: 700, color: "var(--d-ink)" }}>{money(spend)}</span>
+              <span style={{ fontSize: "11px", color: "var(--d-faint)", marginLeft: "auto" }}>
+                across mandates
+              </span>
+            </div>
+            <div style={{ marginTop: "12px", height: "20px" }}>
+              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
+                <path d="M 0,18 Q 20,10 40,15 T 80,5 T 100,12" fill="none" stroke="var(--d-line)" strokeWidth="1.2" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card 4: Decisions today */}
+          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span>Decisions today</span>
+              <Activity size={14} style={{ color: "var(--d-faint)" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
+              <span className="mono" style={{ fontSize: "24px", fontWeight: 700, color: "var(--d-ink)" }}>{decisionsToday}</span>
+              <span style={{ fontSize: "11px", color: "var(--d-ok)", display: "inline-flex", alignItems: "center", gap: "2px", marginLeft: "auto" }}>
+                <ArrowUpRight size={10} /> +12 vs yesterday
+              </span>
+            </div>
+            <div style={{ marginTop: "12px", height: "20px" }}>
+              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
+                <path d="M 0,15 L 10,18 L 20,8 L 30,20 L 40,10 L 50,22 L 60,14 L 70,22 L 80,10 L 100,12" fill="none" stroke="color-mix(in srgb, var(--d-ok) 40%, transparent)" strokeWidth="1.2" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Audit Ledger & Agents List */}
+        <div className="ad-grid" style={{ gridTemplateColumns: "1.5fr 1fr", gap: "16px" }}>
+          {/* Live Audit Ledger */}
+          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 650, color: "var(--d-ink)" }}>Live audit ledger</div>
+                <div style={{ fontSize: "12px", color: "var(--d-faint)", marginTop: "2px" }}>Hash-chained · tamper-evident</div>
+              </div>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
+                <span className="ad-chip ok" style={{ padding: "2px 8px", fontSize: "10px" }}><span className="dot" />LIVE</span>
+                <Btn sm variant="ghost" onClick={() => onNav("history")}>View all</Btn>
+              </div>
+            </div>
+            <div className="ad-stack" style={{ gap: "12px" }}>
+              {recent.map((e) => (
+                <div key={e.seq} style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "13px" }}>
+                  <Chip tone={verdictTone(e.verdict)} dot>{e.verdict}</Chip>
+                  <span className="mono" style={{ fontSize: "12.5px", color: "var(--d-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{e.action}</span>
+                  <span style={{ fontSize: "11.5px", color: "var(--d-faint)", flex: "none" }}>{e.agent}</span>
+                  <span className="mono" style={{ fontSize: "11.5px", color: "var(--d-faint)", flex: "none" }}>{timeAgo(e.ts)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Agents */}
+          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 650, color: "var(--d-ink)" }}>Agents</div>
+                <div style={{ fontSize: "12px", color: "var(--d-faint)", marginTop: "2px" }}>Status & monthly spend</div>
+              </div>
+              <Btn sm variant="ghost" onClick={() => onNav("governance")}>Manage</Btn>
+            </div>
+            <div className="ad-stack" style={{ gap: "16px" }}>
               {agents.map((a) => {
                 const pct = Math.min(100, (a.spendUsed / a.spendLimit) * 100);
                 return (
                   <div key={a.id} style={{ padding: "2px 0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{a.name}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, fontSize: "13px" }}>
+                      <span style={{ fontWeight: 600, color: "var(--d-ink)" }}>{a.name}</span>
                       <Chip tone={statusTone(a.status) as "ok" | "warn" | "bad"} dot>{a.status}</Chip>
-                      <span className="mono" style={{ marginLeft: "auto", fontSize: 12, color: "var(--d-faint)" }}>
-                        {money(a.spendUsed)} <span style={{ opacity: .6 }}>/ {money(a.spendLimit)}</span>
+                      <span className="mono" style={{ marginLeft: "auto", fontSize: "12px", color: "var(--d-faint)" }}>
+                        {money(a.spendUsed)} <span style={{ color: "var(--d-faint)" }}>/ {money(a.spendLimit)}</span>
                       </span>
                     </div>
-                    <div className="ad-meter"><span style={{ width: `${pct}%` }} /></div>
+                    {/* Meter */}
+                    <div className="ad-meter" style={{ height: "6px", background: "var(--d-track)", borderRadius: "4px", overflow: "hidden" }}>
+                      <span style={{ display: "block", height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, var(--d-crimson), var(--d-info))", borderRadius: "4px" }} />
+                    </div>
                   </div>
                 );
               })}
@@ -90,17 +265,6 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
           </div>
         </div>
       </div>
-    </>
-  );
-}
-
-function LedgerRow({ e }: { e: LedgerEntry }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <Chip tone={verdictTone(e.verdict)} dot>{e.verdict}</Chip>
-      <span className="mono" style={{ fontSize: 12.5, color: "var(--d-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{e.action}</span>
-      <span style={{ fontSize: 11.5, color: "var(--d-faint)", flex: "none" }}>{e.agent}</span>
-      <span className="mono" style={{ fontSize: 11.5, color: "var(--d-faint)", flex: "none" }}>{timeAgo(e.ts)}</span>
     </div>
   );
 }
@@ -184,7 +348,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 // ============================================================
 // Inbox
 // ============================================================
-export function InboxPage() {
+export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
   const { approvals, resolveApproval } = useStore();
   const [filter, setFilter] = useState<"all" | "STEP_UP" | "NOTICE">("all");
   const shown = approvals.filter((a) => filter === "all" || a.kind === filter);
@@ -206,7 +370,70 @@ export function InboxPage() {
       />
       <div className="ad-scroll">
         {shown.length === 0 ? (
-          <div className="ad-card"><EmptyState icon={<Check size={22} />} title="Inbox zero">No pending approvals. New requests from your agents will appear here.</EmptyState></div>
+          <div className="ad-card" style={{ display: "grid", placeItems: "center", padding: "64px 24px", position: "relative", overflow: "hidden" }}>
+            {/* Background wireframe decoration */}
+            <div style={{ position: "absolute", inset: 0, opacity: 0.05, pointerEvents: "none", zIndex: 0 }}>
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="grid-empty" width="32" height="32" patternUnits="userSpaceOnUse">
+                    <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" strokeWidth="1" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid-empty)" />
+              </svg>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", position: "relative", zIndex: 1, maxWidth: "420px" }}>
+              {/* Layered opacity icon */}
+              <div style={{ position: "relative", marginBottom: "20px", display: "flex", alignItems: "center", justifyItems: "center" }}>
+                <div style={{
+                  position: "absolute",
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "50%",
+                  background: "var(--crimson-tint)",
+                  opacity: 0.4,
+                  animation: "ping 2s cubic-bezier(0, 0, 0.2, 1) infinite",
+                  transform: "scale(1.2)"
+                }} style-disabled="true" className="pulse-circle" />
+                <div style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "16px",
+                  display: "grid",
+                  placeItems: "center",
+                  background: "linear-gradient(135deg, var(--d-crimson) 0%, var(--d-info) 100%)",
+                  color: "#fff",
+                  boxShadow: "0 8px 24px -6px rgba(var(--accent-rgb), 0.3)",
+                }}>
+                  <Check size={28} strokeWidth={2.5} />
+                </div>
+              </div>
+
+              <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px", color: "var(--d-ink)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>Inbox zero</h3>
+              <p style={{ fontSize: "13.5px", color: "var(--d-muted)", lineHeight: "1.5", margin: "0 0 24px" }}>
+                All clear! No pending actions require your signature at the moment.
+              </p>
+              
+              <div style={{
+                background: "var(--d-soft)",
+                border: "1px solid var(--d-line)",
+                borderRadius: "8px",
+                padding: "16px",
+                width: "100%",
+                boxSizing: "border-box"
+              }}>
+                <div style={{ fontWeight: 600, fontSize: "12px", color: "var(--d-ink)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Next Steps</div>
+                <div style={{ fontSize: "12.5px", color: "var(--d-muted)", lineHeight: "1.4", marginBottom: "12px" }}>
+                  Configure additional governance mandates or connect more service providers to expand coverage.
+                </div>
+                <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                  <Btn sm variant="primary" onClick={() => onNav("governance")}>Configure mandates</Btn>
+                  <Btn sm variant="ghost" onClick={() => onNav("providers")}>Connect providers</Btn>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="ad-stack" style={{ maxWidth: 760 }}>
             {shown.map((a) => (

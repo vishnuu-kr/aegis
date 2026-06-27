@@ -154,11 +154,12 @@ function App() {
       touchMultiplier: 1.5,
     });
 
+    let rafId: number;
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     // Coordinate with native anchors for smooth scrolling with offset
     const handleAnchorClick = (e: MouseEvent) => {
@@ -184,6 +185,7 @@ function App() {
 
     return () => {
       lenis.destroy();
+      cancelAnimationFrame(rafId);
       document.removeEventListener('click', handleAnchorClick);
     };
   }, []);
@@ -311,8 +313,8 @@ function App() {
     if (!input || !input.value || !input.value.includes('@')) {
       const wrapper = input.closest('.footer-newsletter-input-wrapper') as HTMLElement || input;
       if (wrapper) {
-        wrapper.style.borderColor = 'rgba(196,69,47,.7)';
-        wrapper.style.boxShadow = '0 0 0 3px rgba(196,69,47,.14)';
+        wrapper.style.borderColor = 'var(--bad)';
+        wrapper.style.boxShadow = '0 0 0 3px var(--line)';
         setTimeout(() => { wrapper.style.borderColor = ''; wrapper.style.boxShadow = ''; }, 1500);
       }
       return;
@@ -336,7 +338,7 @@ function App() {
     const targets: HTMLElement[] = [];
     sections.forEach((sec) => {
       const kids = sec.querySelectorAll<HTMLElement>(
-        ":scope > .eyebrow, :scope > h2, :scope > p, :scope > .card, :scope > .panel-dark, :scope > [class*='grid'], :scope > [class*='flows'], :scope > [class*='cmp'], :scope > .policy-grid"
+        ":scope > .eyebrow, :scope > h2, :scope > p, :scope > .card, :scope > .panel-dark, :scope > [class*='grid'], :scope > [class*='flows'], :scope > [class*='cmp'], :scope > .policy-grid, :scope > .faq-list, :scope > .gov-flow, :scope > .gov-pillars"
       );
       kids.forEach((el, i) => {
         if (el.classList.contains("reveal")) return; // hero handles its own
@@ -417,27 +419,37 @@ function App() {
     const container = (canvas.closest('.hero-bg-container') || header) as HTMLElement | null;
     if (!header || !ctx || !container) return;
 
+    // Cache the color once to prevent layout recalculation inside the 60fps render loop
+    const crimsonColor = getComputedStyle(canvas).getPropertyValue('--crimson').trim() || '#000000';
+
     let width = 0;
     let height = 0;
     let animId = 0;
     
+    let rect = canvas.getBoundingClientRect();
+    const updateRect = () => {
+      rect = canvas.getBoundingClientRect();
+    };
+
     let mouse = { x: 0, y: 0, targetX: 0, targetY: 0, active: false, easeActive: 0 };
     
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
       mouse.targetX = e.clientX - rect.left;
       mouse.targetY = e.clientY - rect.top;
       mouse.active = true;
     };
     const handleMouseLeave = () => { mouse.active = false; };
-    const handleMouseEnter = () => { mouse.active = true; };
+    const handleMouseEnter = () => { 
+      updateRect();
+      mouse.active = true; 
+    };
 
     const offscreenCanvas = document.createElement('canvas');
     const offscreenCtx = offscreenCanvas.getContext('2d');
 
-    const spacing = 10;
+    const spacing = 13;
     const bSize = 0.3;
-    const radius = 450;
+    const radius = 280;
 
     const handleResize = () => {
       const parent = container || header;
@@ -445,13 +457,13 @@ function App() {
       height = parent.offsetHeight;
       canvas.width = width;
       canvas.height = height;
+      updateRect();
 
       // Draw static background grid onto offscreen canvas
       offscreenCanvas.width = width;
       offscreenCanvas.height = height;
       if (offscreenCtx) {
         offscreenCtx.clearRect(0, 0, width, height);
-        const crimsonColor = getComputedStyle(canvas).getPropertyValue('--crimson').trim() || '#a91b2c';
         offscreenCtx.fillStyle = crimsonColor;
         offscreenCtx.globalAlpha = 0.065;
         offscreenCtx.beginPath();
@@ -469,6 +481,7 @@ function App() {
     triggerArea.addEventListener('mouseleave', handleMouseLeave);
     triggerArea.addEventListener('mouseenter', handleMouseEnter);
     window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', updateRect, { passive: true });
     
     handleResize();
 
@@ -478,8 +491,6 @@ function App() {
       
       // 1. Draw pre-rendered static background grid
       ctx.drawImage(offscreenCanvas, 0, 0);
-      
-      const crimsonColor = getComputedStyle(canvas).getPropertyValue('--crimson').trim() || '#a91b2c';
       
       // Update mouse position with smooth but fast easing
       const targetEase = mouse.active ? 1.0 : 0.0;
@@ -525,52 +536,60 @@ function App() {
       triggerArea.removeEventListener('mouseleave', handleMouseLeave);
       triggerArea.removeEventListener('mouseenter', handleMouseEnter);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', updateRect);
     };
   }, []);
 
   return (
     <MotionConfig reducedMotion="user">
 <div className="aeg-page">
+<a className="skip-link" href="#main">Skip to main content</a>
 {/* ==================== NAV (page-level sticky, floats over hero) ==================== */}
 <div className={`aeg-nav-container ${isScrolled ? 'is-scrolled' : ''}`}>
-<nav className={`aeg-nav ${isScrolled ? 'is-scrolled' : ''}`}>
+<nav className={`aeg-nav ${isScrolled ? 'is-scrolled' : ''}`} aria-label="Main navigation">
   <div style={{height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: isScrolled ? "0 6px 0 18px" : "0 40px", transition: "padding 0.4s var(--ease)", maxWidth: "100%"}}>
     <div style={{display: "flex", alignItems: "center", gap: "34px"}}>
       <a href="#top" style={{display: "flex", alignItems: "center", gap: "10px", textDecoration: "none"}}>
-        <svg fill="none" height="24" viewBox="0 0 24 24" width="24" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+        <img 
+          src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} 
+          alt="AgentTag Logo" 
+          height="24" 
+          style={{ height: "24px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)", outline: "1px solid rgba(0,0,0,0.1)", outlineOffset: "-1px", borderRadius: "4px" }} 
+          className="brand-logo-img" 
+        />
         <span className="brand-logo-text">AgentTag</span>
       </a>
       <div className="hide-sm" style={{display: "flex", alignItems: "center", gap: "2px"}}>
         {/* Platform Dropdown */}
         <div className={`nav-item ${dropdownOpen ? 'is-active' : ''}`} onMouseEnter={handleDropdownEnter} onMouseLeave={handleDropdownLeave}>
-          <a className="nav-link" href="#how">
+          <a className="nav-link" href="#how" aria-haspopup="true" aria-expanded={dropdownOpen} role="button">
             Platform
             <svg className="chevron-icon" fill="none" height="10" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" width="10"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </a>
-          <div className={`t-dropdown ${dropdownOpen ? 'is-open' : ''}`} data-origin="top-center">
+          <div className={`t-dropdown ${dropdownOpen ? 'is-open' : ''}`} data-origin="top-center" role="menu" aria-label="Platform navigation">
             <div className="dropdown-grid">
-              <a className="dropdown-item-card" href="#primitives">
+              <a className="dropdown-item-card" href="#primitives" role="menuitem">
                 <div className="dropdown-item-icon-tile dropdown-icon-purple">
                   <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
                 </div>
                 <span className="dropdown-item-title">Platform</span>
                 <span className="dropdown-item-desc">One control plane — policy engine, identity, and audit ledger — governing every agent.</span>
               </a>
-              <a className="dropdown-item-card" href="#surface">
+              <a className="dropdown-item-card" href="#surface" role="menuitem">
                 <div className="dropdown-item-icon-tile dropdown-icon-blue">
                   <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" x2="20" y1="19" y2="19"></line></svg>
                 </div>
                 <span className="dropdown-item-title">MCP Surface</span>
                 <span className="dropdown-item-desc">Standardized tools connected to Claude, ChatGPT, or custom client libraries.</span>
               </a>
-              <a className="dropdown-item-card" href="#policy">
+              <a className="dropdown-item-card" href="#policy" role="menuitem">
                 <div className="dropdown-item-icon-tile dropdown-icon-green">
                   <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 11 2 2 4-4"></path></svg>
                 </div>
                 <span className="dropdown-item-title">Policy Engine</span>
                 <span className="dropdown-item-desc">Cryptographically signed mandates that run real-time step-up human checks.</span>
               </a>
-              <a className="dropdown-item-card" href="#ledger">
+              <a className="dropdown-item-card" href="#ledger" role="menuitem">
                 <div className="dropdown-item-icon-tile dropdown-icon-orange">
                   <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                 </div>
@@ -587,8 +606,22 @@ function App() {
     
     <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
       <button aria-label="Toggle dark mode" className="theme-toggle" id="themeToggle" title="Toggle dark mode" type="button" onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}>
-        <svg className="t-sun" fill="none" height="16" viewBox="0 0 24 24" width="16"><circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.6"></circle><path d="M12 2.5v2.2M12 19.3v2.2M21.5 12h-2.2M4.7 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6"></path></svg>
-        <svg className="t-moon" fill="none" height="16" viewBox="0 0 24 24" width="16"><path d="M20 13.5A8 8 0 1 1 10.5 4a6.3 6.3 0 0 0 9.5 9.5z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.6"></path></svg>
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={theme}
+            initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {theme === 'dark' ? (
+              <svg className="t-moon" fill="none" height="16" viewBox="0 0 24 24" width="16"><path d="M20 13.5A8 8 0 1 1 10.5 4a6.3 6.3 0 0 0 9.5 9.5z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.6"></path></svg>
+            ) : (
+              <svg className="t-sun" fill="none" height="16" viewBox="0 0 24 24" width="16"><circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.6"></circle><path d="M12 2.5v2.2M12 19.3v2.2M21.5 12h-2.2M4.7 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6"></path></svg>
+            )}
+          </motion.span>
+        </AnimatePresence>
       </button>
       <button aria-expanded={mobileMenuOpen} aria-label="Toggle menu" className="mobile-menu-toggle" id="mobileMenuToggle" type="button" onClick={() => setMobileMenuOpen(prev => !prev)}>
         <svg className="icon-menu" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="16" style={{ display: mobileMenuOpen ? "none" : "inline" }}><line x1="3" x2="21" y1="12" y2="12"></line><line x1="3" x2="21" y1="6" y2="6"></line><line x1="3" x2="21" y1="18" y2="18"></line></svg>
@@ -598,21 +631,21 @@ function App() {
     </div>
   </div>
 
-  {/* Mobile Dropdown Menu */}
-  <div className={`mobile-menu glass ${mobileMenuOpen ? 'is-open' : ''}`} id="mobileMenu">
+  <div className={`mobile-menu glass ${mobileMenuOpen ? 'is-open' : ''}`} id="mobileMenu" role="dialog" aria-label="Mobile navigation" aria-modal="false">
     <div style={{display: "flex", flexDirection: "column", gap: "8px", padding: "18px 16px"}}>
       <a className="mobile-nav-link" href="#primitives" onClick={() => setMobileMenuOpen(false)}>Platform</a>
       <a className="mobile-nav-link" href="#surface" onClick={() => setMobileMenuOpen(false)}>MCP surface</a>
       <a className="mobile-nav-link" href="#policy" onClick={() => setMobileMenuOpen(false)}>Policy</a>
       <a className="mobile-nav-link" href="#ledger" onClick={() => setMobileMenuOpen(false)}>Audit</a>
       <a className="mobile-nav-link" href="#pricing" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
-      <a className="mobile-nav-link" href="#surface" style={{opacity: ".6"}} onClick={() => setMobileMenuOpen(false)}>Docs</a>
+      <a className="mobile-nav-link" href="#surface" style={{opacity: ".7"}} onClick={() => setMobileMenuOpen(false)}>Docs</a>
       <a className="btn btn-ink" href="#cta" style={{marginTop: "10px", justifyContent: "center", width: "100%"}} onClick={() => setMobileMenuOpen(false)}>Request access</a>
     </div>
   </div>
 
 </nav>
 </div>
+<div id="main">
 {/* ==================== HERO BOX ==================== */}
 <div className="hero-bg-container">
 {/* ==================== HERO ==================== */}
@@ -622,135 +655,96 @@ function App() {
       <defs>
         {/* Three blur levels: Deep ambient, Medium blend, and Soft liquid wave */}
         <filter id="liquid-blur-deep" filterUnits="userSpaceOnUse" x="-300" y="-300" width="2040" height="1500">
-          <feGaussianBlur stdDeviation="120" />
+          <feGaussianBlur stdDeviation="150" />
         </filter>
         <filter id="liquid-blur-medium" filterUnits="userSpaceOnUse" x="-200" y="-200" width="1840" height="1300">
-          <feGaussianBlur stdDeviation="78" />
+          <feGaussianBlur stdDeviation="100" />
         </filter>
         <filter id="liquid-blur-soft" filterUnits="userSpaceOnUse" x="-100" y="-100" width="1640" height="1100">
-          <feGaussianBlur stdDeviation="38" />
+          <feGaussianBlur stdDeviation="60" />
         </filter>
 
-        {/* Ambient premium crimson glow definitions */}
+        {/* Ambient premium monochrome glow definitions */}
         <radialGradient id="glow-amber-light" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ff4d6d" stopOpacity="0.9" />
-          <stop offset="40%" stopColor="#ff0a54" stopOpacity="0.65" />
-          <stop offset="100%" stopColor="#c9184a" stopOpacity="0" />
+          <stop offset="0%" stopColor="#0072ff" stopOpacity="0.85" />
+          <stop offset="50%" stopColor="#00c6ff" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="glow-amber-dark" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#e01e37" stopOpacity="0.8" />
-          <stop offset="50%" stopColor="#800f2f" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#08090c" stopOpacity="0" />
+          <stop offset="0%" stopColor="#0072ff" stopOpacity="0.7" />
+          <stop offset="50%" stopColor="#7928ca" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#090909" stopOpacity="0" />
         </radialGradient>
 
         {/* Wave Gradients */}
         <linearGradient id="wave-grad-light" x1="0%" y1="70%" x2="100%" y2="30%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="20%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="42%" stopColor="#ffccd5" stopOpacity="0.65" />
-          <stop offset="68%" stopColor="#ff4d6d" stopOpacity="0.99" />
-          <stop offset="88%" stopColor="#c9184a" stopOpacity="1" />
-          <stop offset="100%" stopColor="#590d22" stopOpacity="1" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="wave-grad-dark" x1="0%" y1="70%" x2="100%" y2="30%">
-          <stop offset="0%" stopColor="#08090c" stopOpacity="0" />
-          <stop offset="25%" stopColor="#08090c" stopOpacity="0" />
-          <stop offset="50%" stopColor="#c9184a" stopOpacity="0.7" />
-          <stop offset="75%" stopColor="#ff758f" stopOpacity="0.9" />
-          <stop offset="90%" stopColor="#ffccd5" stopOpacity="0.98" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="0%" stopColor="#090909" stopOpacity="0" />
+          <stop offset="30%" stopColor="#0055ff" stopOpacity="0.45" />
+          <stop offset="70%" stopColor="#7928ca" stopOpacity="0.75" />
+          <stop offset="100%" stopColor="#0072ff" stopOpacity="0.95" />
         </linearGradient>
         
         <linearGradient id="wave-grad-light-2" x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="35%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="65%" stopColor="#ffb3c1" stopOpacity="0.5" />
-          <stop offset="85%" stopColor="#ff4d6d" stopOpacity="0.88" />
-          <stop offset="100%" stopColor="#a4133c" stopOpacity="0.96" />
+          <stop offset="0%" stopColor="#00c6ff" stopOpacity="0" />
+          <stop offset="40%" stopColor="#0072ff" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#0033cc" stopOpacity="0.95" />
         </linearGradient>
         <linearGradient id="wave-grad-dark-2" x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%" stopColor="#08090c" stopOpacity="0" />
-          <stop offset="35%" stopColor="#08090c" stopOpacity="0" />
-          <stop offset="65%" stopColor="#a4133c" stopOpacity="0.5" />
-          <stop offset="85%" stopColor="#ff758f" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.98" />
-        </linearGradient>
-
-        {/* Crease Edge Gradients (Light) */}
-        <linearGradient id="edge-grad-light" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="20%" stopColor="#ffccd5" stopOpacity="0.75" />
-          <stop offset="50%" stopColor="#ff4d6d" stopOpacity="0.99" />
-          <stop offset="80%" stopColor="#c9184a" stopOpacity="0.99" />
-          <stop offset="100%" stopColor="#590d22" stopOpacity="1" />
-        </linearGradient>
-        <linearGradient id="edge-grad-light-2" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="30%" stopColor="#ffccd5" stopOpacity="0.6" />
-          <stop offset="70%" stopColor="#ff4d6d" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="#c9184a" stopOpacity="0.98" />
-        </linearGradient>
-
-        {/* Crease Edge Gradients (Dark) */}
-        <linearGradient id="edge-grad-dark" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#0e1014" stopOpacity="0" />
-          <stop offset="20%" stopColor="#e01e37" stopOpacity="0.55" />
-          <stop offset="55%" stopColor="#ff758f" stopOpacity="0.9" />
-          <stop offset="80%" stopColor="#ffccd5" stopOpacity="0.99" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
-        </linearGradient>
-        <linearGradient id="edge-grad-dark-2" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#0e1014" stopOpacity="0" />
-          <stop offset="40%" stopColor="#c9184a" stopOpacity="0.45" />
-          <stop offset="75%" stopColor="#ff758f" stopOpacity="0.75" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="#090909" stopOpacity="0" />
+          <stop offset="50%" stopColor="#7928ca" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#0072ff" stopOpacity="0.9" />
         </linearGradient>
 
         {/* Base Background Gradients */}
         <linearGradient id="bg-base-light" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#f8fafc" />
+          <stop offset="100%" stopColor="#fafafa" />
         </linearGradient>
         <linearGradient id="bg-base-dark" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0e1014" />
-          <stop offset="100%" stopColor="#08090c" />
+          <stop offset="0%" stopColor="#0e0e0e" />
+          <stop offset="100%" stopColor="#090909" />
         </linearGradient>
       </defs>
+      
       {/* Base background fill */}
       <rect width="100%" height="100%" fill={theme === 'dark' ? 'url(#bg-base-dark)' : 'url(#bg-base-light)'} />
       
       {/* ================= LAYER 1: Deep Ambient Glows ================= */}
       <g filter="url(#liquid-blur-deep)">
-        {/* Soft Warm Crimson core glow at bottom-center-right */}
+        {/* Soft Warm core glow at bottom-center-right */}
         <ellipse 
           className="gradient-blob-1"
           cx="950" 
           cy="700" 
-          rx="600" 
-          ry="450" 
+          rx="700" 
+          ry="550" 
           fill={theme === 'dark' ? 'url(#glow-amber-dark)' : 'url(#glow-amber-light)'}
-          opacity={theme === 'dark' ? 0.7 : 0.85}
+          opacity="0.9"
         />
         
-        {/* Saturated ambient copper/peach blob in upper-right */}
+        {/* Saturated ambient blob in upper-right */}
         <circle 
           className="gradient-blob-2"
           cx="1100" 
-          cy="450" 
-          r="600" 
+          cy="300" 
+          r="650" 
           fill={theme === 'dark' ? 'url(#wave-grad-dark-2)' : 'url(#wave-grad-light-2)'}
-          opacity={theme === 'dark' ? 0.8 : 0.85}
+          opacity="0.85"
         />
 
         {/* Soft Left Ambient Glow */}
         <ellipse 
-          className="gradient-blob-1"
+          className="gradient-blob-3"
           cx="150" 
           cy="450" 
-          rx="500" 
-          ry="600" 
-          fill={theme === 'dark' ? 'url(#glow-amber-dark)' : 'url(#glow-amber-light)'}
-          opacity={theme === 'dark' ? 0.65 : 0.8}
+          rx="600" 
+          ry="700" 
+          fill={theme === 'dark' ? 'url(#wave-grad-dark)' : 'url(#wave-grad-light)'}
+          opacity="0.8"
         />
       </g>
       
@@ -758,14 +752,14 @@ function App() {
       <g filter="url(#liquid-blur-medium)">
         {/* Right side primary wave */}
         <path 
-          className="gradient-blob-3"
+          className="gradient-blob-1"
           d="M 350 900 
              C 650 720, 950 450, 1150 200 
              S 1380 50, 1440 0 
              L 1440 900 
              Z" 
           fill={theme === 'dark' ? 'url(#wave-grad-dark)' : 'url(#wave-grad-light)'}
-          opacity="0.85"
+          opacity="0.75"
         />
 
         {/* Left side primary wave */}
@@ -777,59 +771,6 @@ function App() {
              Z" 
           fill={theme === 'dark' ? 'url(#wave-grad-dark-2)' : 'url(#wave-grad-light-2)'}
           opacity="0.7"
-        />
-      </g>
-
-      {/* ================= LAYER 3: Defined Glass-like Waves and Highlighted Creases ================= */}
-      <g filter="url(#liquid-blur-soft)">
-        {/* Right side secondary wave boundary */}
-        <path 
-          className="gradient-blob-1"
-          d="M 500 900 
-             C 780 720, 1050 480, 1250 250 
-             S 1400 80, 1440 30 
-             L 1440 900 
-             Z" 
-          fill={theme === 'dark' ? 'url(#wave-grad-dark-2)' : 'url(#wave-grad-light-2)'}
-          opacity="0.75"
-        />
-
-        {/* Right side primary wave glowing boundary line */}
-        <path 
-          className="gradient-blob-2"
-          d="M 350 900 
-             C 650 720, 950 450, 1150 200 
-             S 1380 50, 1440 0" 
-          fill="none" 
-          stroke={theme === 'dark' ? 'url(#edge-grad-dark)' : 'url(#edge-grad-light)'} 
-          strokeWidth="90" 
-          strokeLinecap="round" 
-          opacity="0.95"
-        />
-
-        {/* Right side secondary wave glowing boundary line */}
-        <path 
-          className="gradient-blob-3"
-          d="M 500 900 
-             C 780 720, 1050 480, 1250 250 
-             S 1400 80, 1440 30" 
-          fill="none" 
-          stroke={theme === 'dark' ? 'url(#edge-grad-dark-2)' : 'url(#edge-grad-light-2)'} 
-          strokeWidth="60" 
-          strokeLinecap="round" 
-          opacity="0.7"
-        />
-      </g>
-
-      {/* ================= LAYER 4: Diagonal Valley Crease (separates left and right gradients) ================= */}
-      <g filter="url(#liquid-blur-medium)">
-        <path 
-          className="valley-line"
-          d="M 150 950 C 400 680, 480 320, 250 -50" 
-          fill="none" 
-          strokeWidth="180" 
-          strokeLinecap="round" 
-          opacity="0.95"
         />
       </g>
     </svg>
@@ -923,7 +864,7 @@ function App() {
       <p style={{margin: "0 0 16px", fontSize: "16.5px", lineHeight: "1.6", color: "var(--muted)"}}>
         Teams are buried in API keys, tokens, and custom wrapper scripts, yet autonomous agents are still treated like dumb scripts, not entities.
       </p>
-      <p style={{margin: "0", fontSize: "16.5px", lineHeight: "1.6", color: "var(--muted)", opacity: 0.85}}>
+      <p style={{margin: "0", fontSize: "16.5px", lineHeight: "1.6", color: "var(--muted)"}}>
         AgentTag creates a cryptographically secure identity for every agent, structure-routing every capability authorization so execution compounds safely.
       </p>
     </div>
@@ -1013,9 +954,9 @@ function App() {
             [700, 92],
           ].map(([x, y]) => (
             <g key={`mess-x-${x}-${y}`} transform={`translate(${x}, ${y})`}>
-              <circle cx="0" cy="0" r="14" fill="rgba(239, 68, 68, 0.10)" />
-              <circle cx="0" cy="0" r="9" fill="rgba(239, 68, 68, 0.16)" />
-              <path d="M-3.5 -3.5 L3.5 3.5 M3.5 -3.5 L-3.5 3.5" stroke="#b42318" strokeWidth="1.8" strokeLinecap="round" />
+              <circle cx="0" cy="0" r="14" fill="var(--line)" />
+              <circle cx="0" cy="0" r="9" fill="var(--line-soft)" />
+              <path d="M-3.5 -3.5 L3.5 3.5 M3.5 -3.5 L-3.5 3.5" stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round" />
             </g>
           ))}
 
@@ -1154,21 +1095,21 @@ function App() {
           <circle cx="528" cy="210" r="4.5" className="clean-node-dot" />
           <circle cx="648" cy="210" r="4.5" className="clean-node-dot" />
 
-          {/* Final Green Checkmark Nodes */}
+          {/* Final Monochrome Checkmark Nodes */}
           {/* Checkmark 1 at (752, 70) */}
           <g transform="translate(752, 70)">
-            <circle cx="0" cy="0" r="11" fill="#10b981" stroke="#fff" strokeWidth="1.5" />
-            <path d="M-4 0 L-1 3 L4 -3" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="0" cy="0" r="11" fill="var(--ink)" stroke="var(--paper)" strokeWidth="1.5" />
+            <path d="M-4 0 L-1 3 L4 -3" fill="none" stroke="var(--paper)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </g>
           {/* Checkmark 2 at (752, 140) */}
           <g transform="translate(752, 140)">
-            <circle cx="0" cy="0" r="11" fill="#10b981" stroke="#fff" strokeWidth="1.5" />
-            <path d="M-4 0 L-1 3 L4 -3" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="0" cy="0" r="11" fill="var(--ink)" stroke="var(--paper)" strokeWidth="1.5" />
+            <path d="M-4 0 L-1 3 L4 -3" fill="none" stroke="var(--paper)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </g>
           {/* Checkmark 3 at (752, 210) */}
           <g transform="translate(752, 210)">
-            <circle cx="0" cy="0" r="11" fill="#10b981" stroke="#fff" strokeWidth="1.5" />
-            <path d="M-4 0 L-1 3 L4 -3" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="0" cy="0" r="11" fill="var(--ink)" stroke="var(--paper)" strokeWidth="1.5" />
+            <path d="M-4 0 L-1 3 L4 -3" fill="none" stroke="var(--paper)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </g>
         </svg>
       </div>
@@ -1270,9 +1211,9 @@ function App() {
 <div className="mcp-grid" style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", alignItems: "stretch"}}>
 {/* tool API */}
 <div className="panel-dark">
-<div className="z" style={{display: "flex", alignItems: "center", gap: "10px", padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,.07)"}}>
+<div className="z" style={{display: "flex", alignItems: "center", gap: "10px", padding: "14px 20px", borderBottom: "1px solid var(--line)"}}>
 <span className="win-dots" style={{display: "flex", gap: "6px"}}><span></span><span></span><span></span></span>
-<span className="mono" style={{fontSize: "12px", color: "rgba(255,255,255,.3)", marginLeft: "4px"}}>agenttag · tools</span>
+<span className="mono" style={{fontSize: "12px", color: "var(--muted)", marginLeft: "4px"}}>agenttag · tools</span>
 </div>
 <div className="mcp-tools z">
 <span className="mcp-tool"><b>browse</b>(action, target)</span><span className="mcp-cmt">// drive the browser</span>
@@ -1317,7 +1258,7 @@ function App() {
 {/* Animated dotted world map with copper connection arcs */}
 <WorldMap
   theme={theme === 'dark' ? 'dark' : 'light'}
-  lineColor={theme === 'dark' ? '#d23547' : '#a91b2c'}
+  lineColor={theme === 'dark' ? '#ffffff' : '#000000'}
   dots={[
     { start: { lat: 64.2008, lng: -149.4937 }, end: { lat: 34.0522, lng: -118.2437 } }, // Alaska -> Los Angeles
     { start: { lat: 64.2008, lng: -149.4937 }, end: { lat: -15.7975, lng: -47.8919 } }, // Alaska -> Brasília
@@ -1338,7 +1279,7 @@ function App() {
 <div className="framework-list">
 <div className="framework-item">
 <div className="framework-info">
-<div className="framework-icon-tile" style={{background: "rgba(169, 27, 44, 0.1)", color: "var(--crimson)"}}>
+<div className="framework-icon-tile" style={{background: "var(--surface)", color: "var(--ink)"}}>
 {/* CrewAI — multi-agent squad */}
 <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="15"><circle cx="12" cy="6" r="2.3"></circle><circle cx="5.5" cy="17" r="2.3"></circle><circle cx="18.5" cy="17" r="2.3"></circle><path d="M10.6 7.9 6.9 15M13.4 7.9 17.1 15M7.8 17h8.4"></path></svg>
 </div>
@@ -1348,7 +1289,7 @@ function App() {
 </div>
 <div className="framework-item">
 <div className="framework-info">
-<div className="framework-icon-tile" style={{background: "rgba(169, 27, 44, 0.1)", color: "var(--crimson)"}}>
+<div className="framework-icon-tile" style={{background: "var(--surface)", color: "var(--ink)"}}>
 {/* LangChain — chain links */}
 <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="15"><path d="M9.5 13a4 4 0 0 0 5.66 0l2.5-2.5a4 4 0 0 0-5.66-5.66l-1.3 1.3"></path><path d="M14.5 11a4 4 0 0 0-5.66 0l-2.5 2.5a4 4 0 0 0 5.66 5.66l1.3-1.3"></path></svg>
 </div>
@@ -1358,7 +1299,7 @@ function App() {
 </div>
 <div className="framework-item">
 <div className="framework-info">
-<div className="framework-icon-tile" style={{background: "rgba(169, 27, 44, 0.1)", color: "var(--crimson)"}}>
+<div className="framework-icon-tile" style={{background: "var(--surface)", color: "var(--ink)"}}>
 {/* Claude — radial burst */}
 <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="15"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"></path></svg>
 </div>
@@ -1426,7 +1367,7 @@ function App() {
 <p className="integration-desc">{t.desc}</p>
 </div>
 </div>
-<span className={t.status === "connecting" ? "aeg-chip" : "aeg-chip aeg-chip--ok"} style={t.status === "connecting" ? {color: "var(--warn)", background: "rgba(194,132,42,.12)", borderColor: "rgba(194,132,42,.25)"} : undefined}>{t.status === "connecting" ? "Connecting…" : "Connected"}</span>
+<span className={t.status === "connecting" ? "aeg-chip" : "aeg-chip aeg-chip--ok"} style={t.status === "connecting" ? {color: "var(--ink)", background: "var(--surface)", borderColor: "var(--line)"} : undefined}>{t.status === "connecting" ? "Connecting…" : "Connected"}</span>
 </div>
 ))}
 <button className="integration-add" type="button" onClick={connectTool} disabled={extraTools.length >= newToolPool.length}>
@@ -1495,7 +1436,7 @@ function App() {
 <span style={{color: "var(--faint)", fontSize: "12px"}}>No mandates match “{mandateQuery}”</span>
 </div>
 )}
-<div className="ledger-list-item" style={{borderColor: "var(--crimson)", background: "rgba(169, 27, 44, 0.04)", display: evalRowVisible ? "flex" : "none"}}>
+<div className="ledger-list-item" style={{borderColor: "var(--line)", background: "var(--surface)", display: evalRowVisible ? "flex" : "none"}}>
 <span style={{color: "var(--ink)", fontWeight: "550", maxWidth: "130px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>eval: {"{"}{policyReq}{"}"}</span>
 <span className="aeg-chip" style={{color: policyColor, background: `color-mix(in srgb, ${policyColor} 12%, transparent)`, borderColor: `color-mix(in srgb, ${policyColor} 28%, transparent)`}}>{policyVerdict}</span>
 </div>
@@ -1511,21 +1452,21 @@ function App() {
 <div className="grid-2 z" style={{display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: "0"}}>
 <div style={{padding: "52px 44px"}}>
 <span className="kicker" style={{color: "var(--crimson-br)"}}>The human holds the pen</span>
-<h2 className="display" style={{margin: "16px 0 16px", fontSize: "clamp(33px, 4.4vw, 52px)", lineHeight: "1.06", color: "#faf6ec"}}>Interrupted only when it <span className="accent-it" style={{color: "var(--crimson-br)"}}>genuinely matters.</span></h2>
-<p style={{maxWidth: "440px", margin: "0 0 28px", fontSize: "16px", lineHeight: "1.7", color: "rgba(255,255,255,.55)"}}>Routine work runs untouched. When the agent reaches a new payee, a spend over your threshold, or anything irreversible, it pauses and asks — and your approval is signed on-device, never a blank cheque.</p>
+<h2 className="display" style={{margin: "16px 0 16px", fontSize: "clamp(33px, 4.4vw, 52px)", lineHeight: "1.06", color: "var(--ink)"}}>Interrupted only when it <span className="accent-it" style={{color: "var(--crimson-br)"}}>genuinely matters.</span></h2>
+<p style={{maxWidth: "440px", margin: "0 0 28px", fontSize: "16px", lineHeight: "1.7", color: "var(--muted)"}}>Routine work runs untouched. When the agent reaches a new payee, a spend over your threshold, or anything irreversible, it pauses and asks — and your approval is signed on-device, never a blank cheque.</p>
 <div style={{display: "flex", flexWrap: "wrap", gap: "10px"}}>
-<span className="mono" style={{fontSize: "12.5px", color: "rgba(255,255,255,.6)", padding: "7px 13px", borderRadius: "8px", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)"}}>Always-allow learns your boundaries</span>
-<span className="mono" style={{fontSize: "12.5px", color: "rgba(255,255,255,.6)", padding: "7px 13px", borderRadius: "8px", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)"}}>Fails closed on timeout</span>
+<span className="mono" style={{fontSize: "12.5px", color: "var(--muted)", padding: "7px 13px", borderRadius: "8px", background: "var(--paper)", border: "1px solid var(--line)"}}>Always-allow learns your boundaries</span>
+<span className="mono" style={{fontSize: "12.5px", color: "var(--muted)", padding: "7px 13px", borderRadius: "8px", background: "var(--paper)", border: "1px solid var(--line)"}}>Fails closed on timeout</span>
 </div>
 </div>
 <div className="approval-visual-col">
-<div className="approval-card" style={{position: "relative", width: "100%", maxWidth: "320px", borderRadius: "20px", padding: "22px", background: "rgba(255,253,248,.9)", WebkitBackdropFilter: "blur(16px) saturate(1.4)", backdropFilter: "blur(16px) saturate(1.4)", border: "1px solid rgba(255,255,255,.5)", boxShadow: "0 1px 0 rgba(255,255,255,.6) inset, 0 34px 70px -26px rgba(0,0,0,.6), 0 8px 22px -14px rgba(0,0,0,.4)"}}>
+<div className="approval-card" style={{position: "relative", width: "100%", maxWidth: "320px", borderRadius: "20px", padding: "22px", background: "var(--paper-2)", WebkitBackdropFilter: "blur(16px) saturate(1.4)", backdropFilter: "blur(16px) saturate(1.4)", border: "1px solid var(--line)", boxShadow: "var(--shadow-lift)"}}>
 <div style={{display: "flex", alignItems: "center", gap: "9px", marginBottom: "16px"}}>
-<svg fill="none" height="18" viewBox="0 0 24 24" width="18" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="18" style={{ height: "18px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
 <span style={{fontWeight: "700", fontSize: "13px", color: "var(--ink)"}}>AgentTag</span>
 {(() => {
   const chip = {
-    pending: { label: "STEP-UP", color: "var(--warn)", bg: "rgba(194,132,42,.12)", bd: "rgba(194,132,42,.25)", pulse: true },
+    pending: { label: "STEP-UP", color: "var(--ink)", bg: "var(--surface)", bd: "var(--line)", pulse: true },
     approved: { label: "APPROVED", color: "var(--ok)", bg: "color-mix(in srgb, var(--ok) 12%, transparent)", bd: "color-mix(in srgb, var(--ok) 28%, transparent)", pulse: false },
     denied: { label: "DENIED", color: "var(--bad)", bg: "color-mix(in srgb, var(--bad) 12%, transparent)", bd: "color-mix(in srgb, var(--bad) 28%, transparent)", pulse: false },
   }[approval];
@@ -1565,23 +1506,23 @@ function App() {
 <h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Every action, signed <span className="accent-it" style={{color: "var(--muted)"}}>and chained.</span></h2>
 <p style={{maxWidth: "520px", margin: "0 0 50px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>A tamper-evident ledger records every decision — hash-chained, so history can't be quietly rewritten.</p>
 <div className="panel-dark">
-<div className="z" style={{display: "flex", alignItems: "center", gap: "10px", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,.07)"}}>
+<div className="z" style={{display: "flex", alignItems: "center", gap: "10px", padding: "15px 20px", borderBottom: "1px solid var(--line)"}}>
 <span className="win-dots" style={{display: "flex", gap: "6px"}}><span></span><span></span><span></span></span>
-<span className="mono" style={{fontSize: "12.5px", color: "rgba(255,255,255,.3)", marginLeft: "6px"}}>agenttag · audit ledger</span>
+<span className="mono" style={{fontSize: "12.5px", color: "var(--muted)", marginLeft: "6px"}}>agenttag · audit ledger</span>
 <span className="mono" style={{marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--ok)"}}><span className="dot" style={{width: "6px", height: "6px", background: "var(--ok)", boxShadow: "0 0 7px var(--ok)", animation: "aeg-pulse 1.6s ease-in-out infinite"}}></span>live</span>
 </div>
 <div className="mono z" style={{padding: "6px 0", fontSize: "13px", minHeight: "284px"}}>
 {ledgerRows.map((row, idx) => (
-<div key={(row as any).key ?? row.seq ?? idx} className="row-led" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid rgba(255,255,255,.035)", animation: "aeg-rise .4s var(--ease)"}}>
-<span style={{color: "rgba(255,255,255,.16)"}}>#{row.seq}</span>
-<span style={{color: "rgba(255,255,255,.28)", fontSize: "11.5px"}}>{row.ev}</span>
-<span style={{color: "rgba(255,255,255,.62)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{row.act}</span>
+<div key={(row as any).key ?? row.seq ?? idx} className="row-led" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid var(--line)", animation: "aeg-rise .4s var(--ease)"}}>
+<span style={{color: "var(--faint)"}}>#{row.seq}</span>
+<span style={{color: "var(--muted)", fontSize: "11.5px"}}>{row.ev}</span>
+<span style={{color: "var(--ink-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{row.act}</span>
 <span style={{color: row.color, fontWeight: "500", textAlign: "right"}}>{row.v}</span>
-<span style={{color: "rgba(255,255,255,.12)", textAlign: "right"}}>{row.hash}</span>
+<span style={{color: "var(--faint)", textAlign: "right"}}>{row.hash}</span>
 </div>
 ))}
 </div>
-<div className="mono z" style={{display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid rgba(255,255,255,.07)", fontSize: "12px", color: "rgba(255,255,255,.3)"}}>
+<div className="mono z" style={{display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid var(--line)", fontSize: "12px", color: "var(--muted)"}}>
 <span style={{color: "var(--ok)"}}>✓ chain verified</span>
 <span>{"{"}{ledgerCount}{"}"} entries · prev_hash linked</span>
 </div>
@@ -1594,7 +1535,7 @@ function App() {
 <div className="card" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
 <div style={{padding: "30px 32px 26px"}}>
 <div style={{display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px"}}>
-<svg fill="none" height="19" viewBox="0 0 24 24" width="19" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="19" style={{ height: "19px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
 <span style={{fontWeight: "600", fontSize: "18px", color: "var(--ink)"}}>The Passport</span>
 </div>
 <p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>Every agent gets a cryptographic DID — an Ed25519 key that signs its requests, every audit entry, and is the subject of every mandate. Revoke it once and all authority starves.</p>
@@ -1649,7 +1590,7 @@ function App() {
 </div>
 <div className="field-row">
 <span className="field-k">Step-up above</span>
-<span style={{display: "flex", alignItems: "center", gap: "9px"}}><span className="field-v" style={{color: "var(--warn)"}}>$100.00</span><span className="toggle-on" style={{background: "linear-gradient(180deg, var(--warn), #a86f1f)", boxShadow: "0 1px 0 rgba(255,255,255,.3) inset, 0 4px 10px -4px rgba(194,132,42,.5)"}}></span></span>
+<span style={{display: "flex", alignItems: "center", gap: "9px"}}><span className="field-v" style={{color: "var(--ink)"}}>$100.00</span><span className="toggle-on" style={{background: "var(--ink)", boxShadow: "var(--shadow-card)"}}></span></span>
 </div>
 <div className="field-row">
 <span className="field-k">Expires</span>
@@ -1754,12 +1695,12 @@ function App() {
 <p style={{maxWidth: "560px", margin: "0 0 38px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Every primitive, the policy engine, and the hash-chained ledger — unlocked for everyone during the public beta. No card, no seats, no governance you have to buy back later.</p>
 <div className="price-grid" style={{display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: "18px", alignItems: "stretch"}}>
 {/* Beta access - primary */}
-<div className="card price-pop" style={{padding: "44px 36px 36px", display: "flex", flexDirection: "column", boxShadow: "0 1px 2px rgba(22,20,14,.04), 0 0 0 1px rgba(200, 45, 65, .12), 0 26px 50px -26px rgba(128, 16, 29, .34)"}}>
+<div className="card price-pop" style={{padding: "44px 36px 36px", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-lift)"}}>
 <div className="price-top-bar"></div>
 <div className="price-badge">Recommended</div>
 <div style={{display: "flex", alignItems: "center", justifyContent: "space-between"}}>
 <span style={{fontWeight: "600", fontSize: "16px", color: "var(--ink)"}}>Public beta</span>
-<span className="mono" style={{display: "inline-flex", alignItems: "center", gap: "7px", fontSize: "10.5px", letterSpacing: "1px", textTransform: "uppercase", color: "var(--ok)", background: "rgba(47,158,99,.1)", border: "1px solid rgba(47,158,99,.24)", borderRadius: "999px", padding: "4px 11px 4px 9px", fontWeight: "600"}}><span className="dot" style={{width: "7px", height: "7px", background: "var(--ok)", boxShadow: "0 0 8px var(--ok)"}}></span>Live now</span>
+<span className="mono" style={{display: "inline-flex", alignItems: "center", gap: "7px", fontSize: "10.5px", letterSpacing: "1px", textTransform: "uppercase", color: "var(--ink)", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "999px", padding: "4px 11px 4px 9px", fontWeight: "600"}}><span className="dot" style={{width: "7px", height: "7px", background: "var(--ink)", boxShadow: "none"}}></span>Live now</span>
 </div>
 <div style={{margin: "16px 0 4px", display: "flex", alignItems: "baseline", gap: "10px"}}>
 <span className="display" style={{fontSize: "56px", lineHeight: "1"}}>$0</span>
@@ -1866,13 +1807,13 @@ function App() {
 </div>
 </section>
 {/* ==================== FOOTER ==================== */}
-<footer className="aeg-footer">
+<footer className="aeg-footer" aria-label="Site footer">
 <div className="aeg-wrap">
 {/* Top Brand &amp; Newsletter row */}
 <div className="footer-top-row">
 <div className="footer-brand-col">
 <div style={{display: "flex", alignItems: "center", gap: "10px"}}>
-<svg fill="none" height="24" viewBox="0 0 24 24" width="24" className="brand-logo-svg"><rect fill="var(--crimson-tint)" height="19" rx="5.5" stroke="var(--crimson)" strokeWidth="1.4" width="19" x="2.5" y="2.5"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="6" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="14" y="6"></rect><rect fill="var(--crimson)" height="4" opacity=".4" rx="1.2" width="4" x="6" y="14"></rect><rect fill="var(--crimson)" height="4" rx="1.2" width="4" x="14" y="14"></rect></svg>
+  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="24" style={{ height: "24px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
 <span style={{fontWeight: "800", fontSize: "20px", letterSpacing: "-0.3px", color: "var(--ink)", textTransform: "uppercase", fontFamily: "'Bricolage Grotesque', sans-serif"}}>AgentTag</span>
 </div>
 <p className="footer-brand-tagline">The control plane for delegated agent identity. Your agent, its own passport.</p>
@@ -1882,7 +1823,7 @@ function App() {
 <form className="footer-newsletter-form" onSubmit={onSubmit}>
 <div className="footer-newsletter-input-wrapper">
 <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" style={{marginRight: "10px", opacity: "0.6", flexShrink: "0"}} viewBox="0 0 24 24" width="16"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-<input className="footer-newsletter-input" name="email" placeholder="Enter your email" required type="email"/>
+<input className="footer-newsletter-input" name="email" placeholder="Enter your email" required type="email" aria-label="Email for newsletter"/>
 <button aria-label="Subscribe" className="footer-newsletter-btn" type="submit">
 <svg fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24" width="14"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
 </button>
@@ -1950,9 +1891,9 @@ function App() {
 <div className="footer-watermark">AgentTag</div>
 </div>
 </footer>
-      {/* Progressive backdrop blur layers (Bottom) */}
-      <div className="progressive-blur-bottom" />
+      <div className="progressive-blur-bottom" aria-hidden="true" />
     </div>
+</div>
 
     </MotionConfig>
   )
