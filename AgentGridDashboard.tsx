@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, Shield, Key, RefreshCw, Cpu, Globe, Mail, Phone, CreditCard, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

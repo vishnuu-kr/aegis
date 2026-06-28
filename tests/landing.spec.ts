@@ -106,7 +106,7 @@ test.describe('Landing Page E2E Tests', () => {
   });
 
   // LP-T2-4
-  test('LP-T2-4: Mobile menu expansion and collapse via header buttons', async ({ page, viewport }) => {
+  test('LP-T2-4: Mobile menu expansion and collapse via header buttons', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/');
     
@@ -132,8 +132,6 @@ test.describe('Landing Page E2E Tests', () => {
     const noMatchRow = page.locator('div.ledger-list-item:has-text("No mandates match")');
     await expect(noMatchRow).toBeVisible();
     
-    // Active mandates should be hidden
-    const mandateItem = page.locator('.ledger-list-item').first();
     // Only the noMatchRow or eval row (if visible) might be present. Let's make sure active mandates are not visible.
     const activeMandates = page.locator('.ledger-list-item:has-text("ACTIVE")');
     await expect(activeMandates).toHaveCount(0);

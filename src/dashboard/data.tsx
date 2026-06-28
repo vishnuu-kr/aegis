@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 // ============================================================
@@ -256,7 +257,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const toast: StoreShape["toast"] = (msg, tone = "info") => {
     const id = toastIdRef.current++;
-    setToasts((t) => [...t, { id, msg, tone }]);
+    setToasts((t) => [...t, { id, msg, tone }].slice(-3));
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
   };
   const dismissToast = (id: number) => setToasts((t) => t.filter((x) => x.id !== id));

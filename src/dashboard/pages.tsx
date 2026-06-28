@@ -1,77 +1,123 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Cpu, ShieldCheck, Inbox as InboxIcon, DollarSign, Activity, AlertTriangle,
   Pause, Play, Ban, Plus, Check, X, Clock, Search, Download,
   CreditCard, MessageSquare, Cloud, Database, Laptop, Smartphone, KeyRound,
-  Trash2, Bell, Server, Wand2, MoreHorizontal, ArrowUpRight,
-  ChevronDown, LayoutGrid, Sun,
+  Trash2, Server, Settings, MoreHorizontal, ArrowUpRight,
+  ChevronDown, LayoutGrid, Sun, Fingerprint,
 } from "lucide-react";
 import {
   useStore, verdictTone, riskTone, timeAgo, money,
   type Provider, type Device,
 } from "./data";
-import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader } from "./ui";
+import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader, InteractiveChart, CountdownRing, JsonTree, PolicyComposer, BiometricOverlay } from "./ui";
 import type { RouteKey } from "./Dashboard";
 
 const statusTone = (s: string) => (s === "active" ? "ok" : s === "paused" ? "warn" : "bad");
 
+// Stagger wrapper for cards
+const stagger: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+};
+
 // ============================================================
-// Dashboard / Overview (Efferd Design Style + AgentTag Content)
+// Dashboard / Overview
 // ============================================================
 
+// Chart mock data
+const SPEND_DATA = [
+  { label: "Mon", value: 42 }, { label: "Tue", value: 58 }, { label: "Wed", value: 35 },
+  { label: "Thu", value: 72 }, { label: "Fri", value: 91 }, { label: "Sat", value: 64 },
+  { label: "Sun", value: 83 },
+];
+const DECISION_DATA = [
+  { label: "Mon", value: 12 }, { label: "Tue", value: 28 }, { label: "Wed", value: 19 },
+  { label: "Thu", value: 35 }, { label: "Fri", value: 47 }, { label: "Sat", value: 31 },
+  { label: "Sun", value: 42 },
+];
+
 export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
-  const { agents, approvals, ledger, settings } = useStore();
+  const { agents, approvals, ledger, settings, toast } = useStore();
   const spend = agents.reduce((s, a) => s + a.spendUsed, 0);
   const activeAgents = agents.filter((a) => a.status === "active").length;
   const decisionsToday = ledger.length + 38;
   const recent = [...ledger].slice(-7).reverse();
 
+  const approvalsData = useMemo(() => [
+    { label: "Mon", value: 1 },
+    { label: "Tue", value: 3 },
+    { label: "Wed", value: 2 },
+    { label: "Thu", value: Math.max(0, approvals.length - 1) },
+    { label: "Fri", value: approvals.length },
+  ], [approvals.length]);
+
+  const activeAgentsData = useMemo(() => [
+    { label: "Mon", value: 1 },
+    { label: "Tue", value: 2 },
+    { label: "Wed", value: 2 },
+    { label: "Thu", value: activeAgents },
+    { label: "Fri", value: activeAgents },
+  ], [activeAgents]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, background: "transparent" }}>
-      {/* Top Header Bar */}
       <div className="ad-topbar" style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
-        padding: "16px 28px",
-        borderBottom: "1px solid var(--d-line)",
-        background: "color-mix(in srgb, var(--d-bg-2) 50%, transparent)",
-        backdropFilter: "blur(8px)"
+        justifyContent: "space-between"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 500, color: "var(--d-muted)" }}>
           <LayoutGrid size={15} />
           <h1 style={{ margin: 0, fontSize: "14px", fontWeight: 500, color: "var(--d-muted)", fontFamily: "inherit", letterSpacing: "normal" }}>Dashboard</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            background: "var(--d-soft)",
-            border: "1px solid var(--d-line)",
-            borderRadius: "6px",
-            padding: "5px 12px",
-            width: "160px"
-          }}>
+          <button 
+            onClick={() => toast("Global search opened (Cmd+K)", "info")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "var(--d-soft)",
+              border: "1px solid var(--d-line)",
+              borderRadius: "var(--d-r-sm)",
+              padding: "0 12px",
+              width: "160px",
+              height: "28px",
+              cursor: "pointer",
+              textAlign: "left",
+              font: "inherit",
+              color: "inherit",
+              boxSizing: "border-box"
+            }}
+          >
             <Search size={13} style={{ color: "var(--d-faint)" }} />
-            <span style={{ fontSize: "12px", color: "var(--d-faint)", flex: 1 }}>Find</span>
+            <span style={{ fontSize: "12px", color: "var(--d-faint)", flex: 1, lineHeight: 1 }}>Find</span>
             <span style={{
               fontSize: "9px",
               background: "var(--d-hover)",
               border: "1px solid var(--d-line)",
               borderRadius: "3px",
-              padding: "1px 4px",
-              color: "var(--d-faint)"
+              color: "var(--d-faint)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "15px",
+              width: "15px",
+              lineHeight: 1
             }}>F</span>
-          </div>
+          </button>
           <div style={{
-            width: "24px",
-            height: "24px",
+            width: "28px",
+            height: "28px",
             borderRadius: "50%",
             background: "#fff",
             overflow: "hidden",
             display: "grid",
-            placeItems: "center"
+            placeItems: "center",
+            boxSizing: "border-box"
           }}>
             <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&auto=format&fit=crop&q=80" alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
@@ -83,34 +129,42 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <Sun size={20} style={{ color: "var(--d-muted)" }} />
-            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600, color: "var(--d-ink)", letterSpacing: "-0.01em" }}>Welcome back</h2>
+            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: "var(--d-ink)", letterSpacing: "-0.02em", fontFamily: "'Bricolage Grotesque', sans-serif" }}>Welcome back</h2>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <button style={{
-              background: "var(--d-panel)",
-              border: "1px solid var(--d-line)",
-              borderRadius: "6px",
-              padding: "5px 12px",
-              fontSize: "12px",
-              color: "var(--d-muted)",
-              fontWeight: 500,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              cursor: "pointer"
-            }}>
+            <button 
+              onClick={() => toast("Timeframe selection menu opened", "info")}
+              style={{
+                background: "var(--d-panel)",
+                border: "1px solid var(--d-line)",
+                borderRadius: "var(--d-r-sm)",
+                padding: "5px 12px",
+                fontSize: "12px",
+                color: "var(--d-muted)",
+                fontWeight: 500,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                cursor: "pointer"
+              }}
+            >
               <span>Last 4 hours</span>
               <ChevronDown size={12} />
             </button>
-            <button style={{
-              background: "var(--d-panel)",
-              border: "1px solid var(--d-line)",
-              borderRadius: "6px",
-              padding: "5px 8px",
-              fontSize: "12px",
-              color: "var(--d-muted)",
-              cursor: "pointer"
-            }}>
+            <button
+              aria-label="More options"
+              title="More options"
+              onClick={() => toast("More dashboard options coming soon", "info")}
+              style={{
+                background: "var(--d-panel)",
+                border: "1px solid var(--d-line)",
+                borderRadius: "var(--d-r-sm)",
+                padding: "5px 8px",
+                fontSize: "12px",
+                color: "var(--d-muted)",
+                cursor: "pointer"
+              }}
+            >
               <MoreHorizontal size={14} />
             </button>
           </div>
@@ -127,90 +181,74 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         )}
 
         {/* Metrics Grid (4 Columns) */}
-        <div className="ad-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
+        <motion.div className="ad-metrics-grid" variants={stagger} initial="hidden" animate="visible">
           {/* Card 1: Pending Approvals */}
-          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
               <span>Pending approvals</span>
-              <InboxIcon size={14} style={{ color: "var(--d-faint)" }} />
+              <InboxIcon size={14} style={{ color: "var(--d-muted)" }} />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px", width: "100%" }}>
-              <span className="mono" style={{ fontSize: "24px", fontWeight: 700, color: "var(--d-ink)" }}>{approvals.length}</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px", width: "100%" }}>
+              <span className="tnum ad-metric-val" style={{ fontSize: "32px", fontWeight: 800 }}>{approvals.length}</span>
               <span style={{ marginLeft: "auto" }}>
                 <Chip tone={approvals.length ? "warn" : "ok"}>
                   {approvals.length ? "needs review" : "all clear"}
                 </Chip>
               </span>
             </div>
-            <div style={{ marginTop: "12px", height: "20px" }}>
-              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
-                <path d={approvals.length ? "M 0,18 Q 15,5 30,12 T 60,8 T 90,15 T 100,5" : "M 0,18 L 100,18"} fill="none" stroke={approvals.length ? "color-mix(in srgb, var(--d-warn) 40%, transparent)" : "color-mix(in srgb, var(--d-ok) 40%, transparent)"} strokeWidth="1.2" />
-              </svg>
-            </div>
-          </div>
+            <InteractiveChart data={approvalsData} height={60} color={approvals.length ? "var(--d-warn)" : "var(--d-ok)"} />
+          </motion.div>
 
           {/* Card 2: Active Agents */}
-          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
               <span>Active agents</span>
-              <Cpu size={14} style={{ color: "var(--d-faint)" }} />
+              <Cpu size={14} style={{ color: "var(--d-muted)" }} />
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
-              <span className="mono" style={{ fontSize: "24px", fontWeight: 700, color: "var(--d-ink)" }}>{`${activeAgents}/${agents.length}`}</span>
+              <span className="tnum ad-metric-val" style={{ fontSize: "32px", fontWeight: 800 }}>{`${activeAgents}/${agents.length}`}</span>
               <span style={{ fontSize: "11px", color: "var(--d-faint)", marginLeft: "auto" }}>
                 governed
               </span>
             </div>
-            <div style={{ marginTop: "12px", height: "20px" }}>
-              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
-                <path d="M 0,10 L 20,10 L 40,8 L 60,12 L 80,10 L 100,10" fill="none" stroke="var(--d-line)" strokeWidth="1.2" />
-              </svg>
-            </div>
-          </div>
+            <InteractiveChart data={activeAgentsData} height={60} color="var(--d-faint)" />
+          </motion.div>
 
-          {/* Card 3: Spend this month */}
-          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {/* Card 3: Spend this month — Interactive Chart */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
               <span>Spend this month</span>
-              <DollarSign size={14} style={{ color: "var(--d-faint)" }} />
+              <DollarSign size={14} style={{ color: "var(--d-muted)" }} />
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
-              <span className="mono" style={{ fontSize: "22px", fontWeight: 700, color: "var(--d-ink)" }}>{money(spend)}</span>
+              <span className="tnum ad-metric-val" style={{ fontSize: "28px", fontWeight: 800 }}>{money(spend)}</span>
               <span style={{ fontSize: "11px", color: "var(--d-faint)", marginLeft: "auto" }}>
                 across mandates
               </span>
             </div>
-            <div style={{ marginTop: "12px", height: "20px" }}>
-              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
-                <path d="M 0,18 Q 20,10 40,15 T 80,5 T 100,12" fill="none" stroke="var(--d-line)" strokeWidth="1.2" />
-              </svg>
-            </div>
-          </div>
+            <InteractiveChart data={SPEND_DATA} height={60} color="var(--d-ink)" unit="$" />
+          </motion.div>
 
-          {/* Card 4: Decisions today */}
-          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {/* Card 4: Decisions today — Interactive Chart */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
               <span>Decisions today</span>
-              <Activity size={14} style={{ color: "var(--d-faint)" }} />
+              <Activity size={14} style={{ color: "var(--d-muted)" }} />
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
-              <span className="mono" style={{ fontSize: "24px", fontWeight: 700, color: "var(--d-ink)" }}>{decisionsToday}</span>
+              <span className="tnum ad-metric-val" style={{ fontSize: "32px", fontWeight: 800 }}>{decisionsToday}</span>
               <span style={{ fontSize: "11px", color: "var(--d-ok)", display: "inline-flex", alignItems: "center", gap: "2px", marginLeft: "auto" }}>
                 <ArrowUpRight size={10} /> +12 vs yesterday
               </span>
             </div>
-            <div style={{ marginTop: "12px", height: "20px" }}>
-              <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
-                <path d="M 0,15 L 10,18 L 20,8 L 30,20 L 40,10 L 50,22 L 60,14 L 70,22 L 80,10 L 100,12" fill="none" stroke="color-mix(in srgb, var(--d-ok) 40%, transparent)" strokeWidth="1.2" />
-              </svg>
-            </div>
-          </div>
-        </div>
+            <InteractiveChart data={DECISION_DATA} height={60} color="var(--d-ok)" />
+          </motion.div>
+        </motion.div>
 
         {/* Live Audit Ledger & Agents List */}
-        <div className="ad-grid" style={{ gridTemplateColumns: "1.5fr 1fr", gap: "16px" }}>
+        <motion.div className="ad-grid" style={{ gridTemplateColumns: "1.5fr 1fr", gap: "16px" }} variants={stagger} initial="hidden" animate="visible">
           {/* Live Audit Ledger */}
-          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+          <motion.div variants={fadeUp} className="ad-card pad">
             <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
               <div>
                 <div style={{ fontSize: "14px", fontWeight: 650, color: "var(--d-ink)" }}>Live audit ledger</div>
@@ -223,7 +261,7 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
             </div>
             <div className="ad-stack" style={{ gap: "12px" }}>
               {recent.map((e) => (
-                <div key={e.seq} style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "13px" }}>
+                <div key={e.seq} className="ad-ledger-row">
                   <Chip tone={verdictTone(e.verdict)} dot>{e.verdict}</Chip>
                   <span className="mono" style={{ fontSize: "12.5px", color: "var(--d-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{e.action}</span>
                   <span style={{ fontSize: "11.5px", color: "var(--d-faint)", flex: "none" }}>{e.agent}</span>
@@ -231,10 +269,10 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Agents */}
-          <div className="ad-card pad ad-rise" style={{ background: "var(--d-panel)", border: "1px solid var(--d-line)" }}>
+          <motion.div variants={fadeUp} className="ad-card pad">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div>
                 <div style={{ fontSize: "14px", fontWeight: 650, color: "var(--d-ink)" }}>Agents</div>
@@ -256,37 +294,43 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                     </div>
                     {/* Meter */}
                     <div className="ad-meter" style={{ height: "6px", background: "var(--d-track)", borderRadius: "4px", overflow: "hidden" }}>
-                      <span style={{ display: "block", height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, var(--d-crimson), var(--d-info))", borderRadius: "4px" }} />
+                      <span style={{ display: "block", height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, var(--d-ink), var(--d-faint))", borderRadius: "4px" }} />
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );
 }
 
 // ============================================================
-// Governance
+// Governance — with Policy Composer
 // ============================================================
 export function GovernancePage() {
   const { agents, toggleAgentEnforcement, setAgentStatus, toast } = useStore();
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  const handleComposerSubmit = (_template: string, name: string, limit: number) => {
+    toast(`Mandate "${name}" ($${limit}) signed & deployed`, "ok");
+  };
+
   return (
     <>
       <PageHeader
         title="Governance"
         subtitle="Every agent, its mandates, and the limits you've signed."
-        actions={<Btn variant="primary" icon={<Plus size={15} />} onClick={() => toast("New mandate — opens the policy composer", "info")}>New mandate</Btn>}
+        actions={<Btn variant="primary" icon={<Plus size={15} />} onClick={() => setComposerOpen(true)}>New mandate</Btn>}
       />
       <div className="ad-scroll">
-        <div className="ad-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))" }}>
+        <motion.div className="ad-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))" }} variants={stagger} initial="hidden" animate="visible">
           {agents.map((a) => {
             const pct = Math.min(100, (a.spendUsed / a.spendLimit) * 100);
             return (
-              <div key={a.id} className="ad-card pad hover ad-rise">
+              <motion.div key={a.id} variants={fadeUp} className="ad-card pad hover">
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span className="ad-row-ico" style={{ color: "var(--d-crimson)" }}><Cpu size={18} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -327,11 +371,14 @@ export function GovernancePage() {
                     <Btn sm variant="danger" icon={<Ban size={14} />} onClick={() => setAgentStatus(a.id, "revoked")}>Revoke</Btn>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </div>
+      <AnimatePresence>
+        {composerOpen && <PolicyComposer onClose={() => setComposerOpen(false)} onSubmit={handleComposerSubmit} />}
+      </AnimatePresence>
     </>
   );
 }
@@ -346,12 +393,42 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 // ============================================================
-// Inbox
+// Inbox — Split-Pane with Biometric
 // ============================================================
 export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
   const { approvals, resolveApproval } = useStore();
   const [filter, setFilter] = useState<"all" | "STEP_UP" | "NOTICE">("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [bioTarget, setBioTarget] = useState<string | null>(null);
   const shown = approvals.filter((a) => filter === "all" || a.kind === filter);
+  const selected = shown.find((a) => a.id === selectedId) || null;
+
+  const handleApprove = useCallback((id: string) => {
+    setBioTarget(id);
+  }, []);
+
+  const handleBioComplete = useCallback(() => {
+    if (bioTarget) {
+      resolveApproval(bioTarget, "approve");
+      setSelectedId(null);
+      setBioTarget(null);
+    }
+  }, [bioTarget, resolveApproval]);
+
+  // JSON payload for detail view
+  const policyJson = selected ? {
+    request_id: selected.id,
+    kind: selected.kind,
+    risk_level: selected.risk,
+    agent: selected.agent,
+    action: selected.title,
+    mandate_evaluation: {
+      policy_matched: "spend-cap-v2",
+      threshold_exceeded: selected.kind === "STEP_UP",
+      requires_signature: true,
+    },
+    timestamp: new Date(selected.createdAt).toISOString(),
+  } : null;
 
   return (
     <>
@@ -362,14 +439,22 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
           <div className="ad-seg">
             {(["all", "STEP_UP", "NOTICE"] as const).map((f) => (
               <button key={f} className={filter === f ? "is-active" : ""} onClick={() => setFilter(f)}>
-                {f === "all" ? "All" : f === "STEP_UP" ? "Step-up" : "Notice"}
+                {filter === f && (
+                  <motion.div
+                    layoutId="active-seg-inbox"
+                    className="ad-seg-pill"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span>{f === "all" ? "All" : f === "STEP_UP" ? "Step-up" : "Notice"}</span>
               </button>
             ))}
           </div>
         }
       />
-      <div className="ad-scroll">
-        {shown.length === 0 ? (
+
+      {shown.length === 0 ? (
+        <div className="ad-scroll">
           <div className="ad-card" style={{ display: "grid", placeItems: "center", padding: "64px 24px", position: "relative", overflow: "hidden" }}>
             {/* Background wireframe decoration */}
             <div style={{ position: "absolute", inset: 0, opacity: 0.05, pointerEvents: "none", zIndex: 0 }}>
@@ -384,18 +469,7 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", position: "relative", zIndex: 1, maxWidth: "420px" }}>
-              {/* Layered opacity icon */}
               <div style={{ position: "relative", marginBottom: "20px", display: "flex", alignItems: "center", justifyItems: "center" }}>
-                <div style={{
-                  position: "absolute",
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "50%",
-                  background: "var(--crimson-tint)",
-                  opacity: 0.4,
-                  animation: "ping 2s cubic-bezier(0, 0, 0.2, 1) infinite",
-                  transform: "scale(1.2)"
-                }} style-disabled="true" className="pulse-circle" />
                 <div style={{
                   width: "56px",
                   height: "56px",
@@ -434,29 +508,95 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="ad-stack" style={{ maxWidth: 760 }}>
-            {shown.map((a) => (
-              <div key={a.id} className="ad-card pad ad-rise">
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <Chip tone={a.kind === "STEP_UP" ? "warn" : "info"} dot>{a.kind === "STEP_UP" ? "STEP-UP" : "NOTICE"}</Chip>
-                  <Chip tone={riskTone(a.risk)}>{a.risk} risk</Chip>
-                  <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--d-faint)" }}>
-                    <Clock size={13} /> {timeAgo(a.createdAt)}
-                  </span>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 650, marginBottom: 4 }}>{a.title}</div>
-                <div style={{ fontSize: 13, color: "var(--d-muted)", marginBottom: 16 }}>{a.agent} · {a.detail}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Btn variant="ok" icon={<Check size={15} />} onClick={() => resolveApproval(a.id, "approve")}>Approve & sign</Btn>
-                  <Btn variant="danger" icon={<X size={15} />} onClick={() => resolveApproval(a.id, "deny")}>Deny</Btn>
-                  <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 11.5, color: "var(--d-faint)" }}>Signed on-device · passkey</span>
-                </div>
-              </div>
-            ))}
+        </div>
+      ) : (
+        <div className="ad-inbox-split">
+          {/* Left: List */}
+          <div className="ad-inbox-list">
+            <AnimatePresence>
+              {shown.map((a) => (
+                <motion.div
+                  key={a.id}
+                  className={`ad-inbox-item${selectedId === a.id ? " selected" : ""}`}
+                  onClick={() => setSelectedId(a.id)}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {/* eslint-disable-next-line react-hooks/purity */}
+                  <CountdownRing remaining={Math.max(0, Math.floor((a.createdAt + 3600000 - Date.now()) / 1000))} total={3600} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <Chip tone={a.kind === "STEP_UP" ? "warn" : "info"} dot>{a.kind === "STEP_UP" ? "STEP-UP" : "NOTICE"}</Chip>
+                      <Chip tone={riskTone(a.risk)}>{a.risk} risk</Chip>
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--d-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--d-faint)", marginTop: 2 }}>{a.agent} · {timeAgo(a.createdAt)}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
-        )}
-      </div>
+
+          {/* Right: Detail */}
+          <div className="ad-inbox-detail">
+            <AnimatePresence mode="wait">
+              {selected ? (
+                <motion.div
+                  key={selected.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ display: "flex", flexDirection: "column", gap: 20, flex: 1 }}
+                >
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <Chip tone={selected.kind === "STEP_UP" ? "warn" : "info"} dot>{selected.kind === "STEP_UP" ? "STEP-UP" : "NOTICE"}</Chip>
+                      <Chip tone={riskTone(selected.risk)}>{selected.risk} risk</Chip>
+                      <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--d-faint)" }}>
+                        <Clock size={13} /> {timeAgo(selected.createdAt)}
+                      </span>
+                    </div>
+                    <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--d-ink)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{selected.title}</h2>
+                    <div style={{ fontSize: 13.5, color: "var(--d-muted)" }}>{selected.agent} · {selected.detail}</div>
+                  </div>
+
+                  {/* JSON policy tree */}
+                  <div>
+                    <div style={{ fontSize: 11, color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, fontWeight: 600 }}>Mandate Evaluation</div>
+                    {policyJson && <JsonTree data={policyJson as Record<string, unknown>} />}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 16, borderTop: "1px solid var(--d-line)" }}>
+                    <Btn variant="ok" icon={<Fingerprint size={15} />} onClick={() => handleApprove(selected.id)}>Approve & sign</Btn>
+                    <Btn variant="danger" icon={<X size={15} />} onClick={() => { resolveApproval(selected.id, "deny"); setSelectedId(null); }}>Deny</Btn>
+                    <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 11.5, color: "var(--d-faint)" }}>Signed on-device · passkey</span>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  className="ad-inbox-detail-empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <InboxIcon size={24} style={{ opacity: 0.3 }} />
+                    <span>Select a request to inspect</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {bioTarget && <BiometricOverlay onComplete={handleBioComplete} />}
+      </AnimatePresence>
     </>
   );
 }
@@ -495,7 +635,14 @@ export function HistoryPage() {
         <div className="ad-seg" style={{ marginBottom: 16 }}>
           {(["all", "ALLOW", "STEP_UP", "DENY"] as const).map((f) => (
             <button key={f} className={vf === f ? "is-active" : ""} onClick={() => setVf(f)}>
-              {f === "all" ? "All verdicts" : f === "STEP_UP" ? "Step-up" : f.charAt(0) + f.slice(1).toLowerCase()}
+              {vf === f && (
+                <motion.div
+                  layoutId="active-seg-history"
+                  className="ad-seg-pill"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span>{f === "all" ? "All verdicts" : f === "STEP_UP" ? "Step-up" : f.charAt(0) + f.slice(1).toLowerCase()}</span>
             </button>
           ))}
         </div>
@@ -545,9 +692,9 @@ export function ProvidersPage() {
         actions={<Btn variant="primary" icon={<Plus size={15} />} onClick={() => toast("Browse the provider catalog", "info")}>Connect new</Btn>}
       />
       <div className="ad-scroll">
-        <div className="ad-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
+        <motion.div className="ad-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }} variants={stagger} initial="hidden" animate="visible">
           {providers.map((p) => (
-            <div key={p.id} className="ad-row ad-rise">
+            <motion.div key={p.id} variants={fadeUp} className="ad-row">
               <span className="ad-row-ico" style={{ color: p.connected ? "var(--d-crimson)" : "var(--d-faint)" }}>{provIcon(p.category)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="ad-row-name">{p.name}</div>
@@ -556,9 +703,9 @@ export function ProvidersPage() {
               {p.connected
                 ? <Btn sm variant="ghost" onClick={() => toggleProvider(p.id)}>Disconnect</Btn>
                 : <Btn sm variant="primary" onClick={() => toggleProvider(p.id)}>Connect</Btn>}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </>
   );
@@ -579,9 +726,9 @@ export function DevicesPage() {
         actions={<Btn variant="primary" icon={<Plus size={15} />} onClick={() => addDevice("New passkey · " + new Date().toLocaleTimeString(), "security-key")}>Link device</Btn>}
       />
       <div className="ad-scroll">
-        <div className="ad-stack" style={{ maxWidth: 720 }}>
+        <motion.div className="ad-stack" style={{ maxWidth: 720 }} variants={stagger} initial="hidden" animate="visible">
           {devices.map((d) => (
-            <div key={d.id} className="ad-row ad-rise">
+            <motion.div key={d.id} variants={fadeUp} className="ad-row">
               <span className="ad-row-ico">{devIcon(d.kind)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="ad-row-name" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -593,9 +740,9 @@ export function DevicesPage() {
               <IconBtn aria-label={`revoke ${d.name}`} disabled={d.current} title={d.current ? "Can't revoke the current device" : "Revoke"} onClick={() => revokeDevice(d.id)} style={d.current ? { opacity: .4, cursor: "not-allowed" } : undefined}>
                 <Trash2 />
               </IconBtn>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </>
   );
@@ -613,8 +760,8 @@ export function SettingsPage({ onReopenWizard }: { onReopenWizard: () => void })
     <>
       <PageHeader title="Settings" subtitle="Enforcement, license, and how Aegis reaches you." />
       <div className="ad-scroll">
-        <div className="ad-stack" style={{ maxWidth: 720 }}>
-          <section className="ad-card pad ad-rise">
+        <motion.div className="ad-stack" style={{ maxWidth: 720 }} variants={stagger} initial="hidden" animate="visible">
+          <motion.section variants={fadeUp} className="ad-card pad">
             <div className="ad-section-title"><ShieldCheck size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Enforcement</div>
             <div className="ad-section-sub">When on, every action is checked against its mandate before it runs.</div>
             <div className="ad-row" style={{ background: "transparent", border: "1px solid var(--d-line)" }}>
@@ -628,47 +775,32 @@ export function SettingsPage({ onReopenWizard }: { onReopenWizard: () => void })
               <label className="ad-field-label">Step-up threshold (USD)</label>
               <input className="ad-input" type="number" value={settings.stepUpThreshold} onChange={(e) => updateSettings({ stepUpThreshold: Number(e.target.value) || 0 })} style={{ maxWidth: 200 }} />
             </div>
-          </section>
+          </motion.section>
 
-          <section className="ad-card pad ad-rise">
+          <motion.section variants={fadeUp} className="ad-card pad">
             <div className="ad-section-title"><KeyRound size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />License</div>
             <div className="ad-section-sub">Activate a key to enable enforcement in production.</div>
             <div style={{ display: "flex", gap: 8 }}>
               <input className="ad-input" placeholder="paste your license key" value={key} onChange={(e) => setKey(e.target.value)} />
               <Btn variant="primary" disabled={!key.trim()} onClick={() => { updateSettings({ licenseKey: key.trim() }); toast("License activated", "ok"); }}>Activate</Btn>
             </div>
-          </section>
+          </motion.section>
 
-          <section className="ad-card pad ad-rise">
+          <motion.section variants={fadeUp} className="ad-card pad">
             <div className="ad-section-title"><Server size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Backend API</div>
             <div className="ad-section-sub">Where the dashboard reaches your control plane.</div>
             <div style={{ display: "flex", gap: 8 }}>
               <input className="ad-input mono" value={api} onChange={(e) => setApi(e.target.value)} />
               <Btn variant="ghost" onClick={() => { updateSettings({ apiUrl: api }); toast("Endpoint saved", "ok"); }}>Save</Btn>
             </div>
-          </section>
+          </motion.section>
 
-          <section className="ad-card pad ad-rise">
-            <div className="ad-section-title"><Bell size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Notifications</div>
-            <div className="ad-section-sub">How we reach you when an agent needs a signature.</div>
-            <div className="ad-stack">
-              <div className="ad-row" style={{ background: "transparent" }}>
-                <div style={{ flex: 1 }}><div className="ad-row-name">Email</div><div className="ad-row-desc">operator@aegis.dev</div></div>
-                <Toggle on={settings.notifyEmail} onClick={() => updateSettings({ notifyEmail: !settings.notifyEmail })} label="email notifications" />
-              </div>
-              <div className="ad-row" style={{ background: "transparent" }}>
-                <div style={{ flex: 1 }}><div className="ad-row-name">SMS</div><div className="ad-row-desc">+1 ••• ••• 4471</div></div>
-                <Toggle on={settings.notifySms} onClick={() => updateSettings({ notifySms: !settings.notifySms })} label="sms notifications" />
-              </div>
-            </div>
-          </section>
-
-          <section className="ad-card pad ad-rise">
-            <div className="ad-section-title"><Wand2 size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Setup</div>
+          <motion.section variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title"><Settings size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Setup</div>
             <div className="ad-section-sub">Re-run the guided setup wizard.</div>
-            <Btn variant="ghost" icon={<Wand2 size={15} />} onClick={onReopenWizard}>Open setup wizard</Btn>
-          </section>
-        </div>
+            <Btn variant="ghost" icon={<Settings size={15} />} onClick={onReopenWizard}>Open setup wizard</Btn>
+          </motion.section>
+        </motion.div>
       </div>
     </>
   );

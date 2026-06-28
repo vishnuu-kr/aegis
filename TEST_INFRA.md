@@ -124,3 +124,49 @@ This document outlines the requirement-driven, opaque-box E2E test suite structu
 * **SCEN-4-3**: Emergency Revocation Drill: Operator detects anomalous agent behaviour, revokes passport on Governance page, and verifies that the agent's enforcement switches status.
 * **SCEN-4-4**: Accessibility (Axe) Audit: Landing page and main dashboard views have no critical violations.
 * **SCEN-4-5**: Settings Sync & Reset Loop: Resetting setup wizard from settings, modifying endpoints, changing notification channels, and verifying settings persist after reloads.
+
+---
+
+## Implemented E2E Test Infrastructure
+
+The actual implementation consists of **27 automated tests** written in TypeScript and executed using Playwright. The tests are structured across four main specification files inside the `/tests/` directory:
+
+### 1. `/tests/landing.spec.ts` (10 Tests)
+Covers landing page visual elements, interactions, newsletter validation, FAQ accordions, and basic search filtering.
+- **LP-T1-1**: Scroll interaction reveals content safely.
+- **LP-T1-2**: MCP Console Simulation renders live logs and JSON.
+- **LP-T1-3**: Scenario Cycler rotates policy text.
+- **LP-T1-4**: Newsletter validation (valid email submits successfully).
+- **LP-T1-5**: FAQ Accordion toggles state on click.
+- **LP-T2-1**: Empty newsletter submission shows warning border.
+- **LP-T2-2**: Invalid email structure fails validation.
+- **LP-T2-3**: FAQ accordion toggling same item twice collapses it.
+- **LP-T2-4**: Mobile menu expands and collapses via toggle.
+- **LP-T2-5**: Non-existent search term filters out all ledger rows.
+
+### 2. `/tests/premium-check.spec.ts` (2 Tests)
+Verifies clean loading characteristics and consistent styling.
+- **Console & Network Scan**: Confirms no network errors or console issues and checks custom logo dimensions.
+- **Theme Consistency**: Verifies page toggling maintains monochrome palette styling.
+
+### 3. `/tests/wizard.spec.ts` (10 Tests)
+Validates the multi-step guided setup flow and state boundaries.
+- **WIZ-T1-1**: License key activation updates storage.
+- **WIZ-T1-2**: Onboarding updates agent names.
+- **WIZ-T1-3**: Provider switches toggle Stripe/Twilio status.
+- **WIZ-T1-4**: Linking phone triggers confirmation code.
+- **WIZ-T1-5**: CLI command generator updates based on parameters.
+- **WIZ-T2-1**: License activation is blocked on empty/whitespace keys.
+- **WIZ-T2-2**: Back/Next buttons obey boundaries.
+- **WIZ-T2-3**: Verification code length prevents premature submits.
+- **WIZ-T2-4**: Closing wizard sets completed flag in storage.
+- **WIZ-T2-5**: Finishing wizard redirects user to main overview.
+
+### 4. `/tests/dashboard.spec.ts` (5 Tests)
+Validates the post-onboarding control plane routes, responsive design, and accessibility.
+- **DB-T1-1**: Sidebar navigation transitions through sub-routes (Overview, Governance, Inbox, History, Providers, Devices, Settings) and validates corresponding header values and URL hash changes.
+- **DB-T1-2**: Mobile viewport rendering (375px width) ensures the sidebar collapses cleanly to 68px, labels are hidden, and there is no horizontal layout overflow on the page body.
+- **DB-T1-3**: Accessibility check on the Landing Page using `@axe-core/playwright` verifies zero critical violations.
+- **DB-T1-4**: Accessibility check on the Dashboard Page using `@axe-core/playwright` verifies zero critical violations.
+- **DB-T1-5**: Sidebar theme toggle button updates `data-theme` attribute on the html document element.
+

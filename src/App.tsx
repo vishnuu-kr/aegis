@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react"
 import { MotionConfig, motion, AnimatePresence } from "framer-motion"
 import WorldMap from "./components/WorldMap"
 import Lenis from "lenis"
+import { StoreProvider } from "./dashboard/data"
+import { OverviewPage, GovernancePage, InboxPage } from "./dashboard/pages"
+import { Wizard } from "./dashboard/Wizard"
 
 // ── Motion system ───────────────────────────────────────────────────────────
 // One reveal "hand" for the whole page so sections resolve cohesively instead
@@ -79,16 +82,40 @@ function MCPConsole() {
   );
 }
 
-// Reveal item: fade + gentle rise. Used as staggered children (e.g. the hero
-// passport fields populating in). Pair with a container that drives `show`.
-// const revealItem = {
-//   hidden: { opacity: 0, y: 16 },
-//   show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE } },
-// };
+// Clean, monochrome icons for dynamically added tools in the integrations section
+const toolIcons: Record<string, React.ReactNode> = {
+  Slack: (
+    <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+  ),
+  Notion: (
+    <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+  ),
+  "AWS Lambda": (
+    <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><rect height="18" rx="2" ry="2" width="18" x="3" y="3"></rect><line x1="9" x2="15" y1="9" y2="15"></line><line x1="15" x2="9" y1="9" y2="15"></line></svg>
+  ),
+  Linear: (
+    <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+  )
+};
+
 
 function App() {
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && videoRef.current.readyState >= 3) {
+      setVideoLoaded(true);
+    }
+    const timer = setTimeout(() => {
+      setVideoLoaded(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownTimerRef = useRef<any>(null);
+  const [showcaseTab, setShowcaseTab] = useState<'overview' | 'governance' | 'inbox' | 'wizard'>('overview');
+  const dropdownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const handleDropdownEnter = () => {
     if (dropdownTimerRef.current) {
@@ -117,7 +144,10 @@ function App() {
     };
     window.addEventListener("scroll", handleScroll);
     handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
 
@@ -125,7 +155,7 @@ function App() {
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem("aeg-theme") || "light";
-    } catch (e) {
+    } catch {
       return "light";
     }
   });
@@ -139,8 +169,45 @@ function App() {
     }
     try {
       localStorage.setItem("aeg-theme", theme);
-    } catch (e) {}
+    } catch {
+      // ignore
+    }
   }, [theme]);
+
+  // Mouse position tracking for premium CTA buttons
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const btn = e.currentTarget as HTMLElement;
+      const rect = btn.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      btn.style.setProperty('--mouse-x', `${x}px`);
+      btn.style.setProperty('--mouse-y', `${y}px`);
+    };
+
+    const updateButtons = () => {
+      const buttons = document.querySelectorAll<HTMLElement>('.btn, .btn-cta-primary, .btn-capsule-cta, .btn-cta-new');
+      buttons.forEach(btn => {
+        btn.removeEventListener('mousemove', handleMouseMove);
+        btn.removeEventListener('mouseenter', handleMouseMove);
+        btn.addEventListener('mousemove', handleMouseMove);
+        btn.addEventListener('mouseenter', handleMouseMove);
+      });
+    };
+
+    updateButtons();
+
+    const timer = setTimeout(updateButtons, 500);
+
+    return () => {
+      clearTimeout(timer);
+      const buttons = document.querySelectorAll<HTMLElement>('.btn, .btn-cta-primary, .btn-capsule-cta, .btn-cta-new');
+      buttons.forEach(btn => {
+        btn.removeEventListener('mousemove', handleMouseMove);
+        btn.removeEventListener('mouseenter', handleMouseMove);
+      });
+    };
+  }, []);
 
   // Initialize Lenis smooth scroll
   useEffect(() => {
@@ -241,9 +308,6 @@ function App() {
   // "Connect new tool" — append from a pool with a connecting→connected flip
   const newToolPool = [
     { name: "Slack", desc: "Scoped channel posts" },
-    { name: "Notion", desc: "Workspace read / write" },
-    { name: "AWS Lambda", desc: "Invoke scoped functions" },
-    { name: "Linear", desc: "Issue automation" },
   ];
   const [extraTools, setExtraTools] = useState<{ name: string; desc: string; status: "connecting" | "connected" }[]>([]);
   const connectTool = () => {
@@ -419,37 +483,27 @@ function App() {
     const container = (canvas.closest('.hero-bg-container') || header) as HTMLElement | null;
     if (!header || !ctx || !container) return;
 
-    // Cache the color once to prevent layout recalculation inside the 60fps render loop
+    // Cache the color once to prevent layout recalculation
     const crimsonColor = getComputedStyle(canvas).getPropertyValue('--crimson').trim() || '#000000';
 
     let width = 0;
     let height = 0;
-    let animId = 0;
-    
-    let rect = canvas.getBoundingClientRect();
-    const updateRect = () => {
-      rect = canvas.getBoundingClientRect();
-    };
-
-    let mouse = { x: 0, y: 0, targetX: 0, targetY: 0, active: false, easeActive: 0 };
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      mouse.targetX = e.clientX - rect.left;
-      mouse.targetY = e.clientY - rect.top;
-      mouse.active = true;
-    };
-    const handleMouseLeave = () => { mouse.active = false; };
-    const handleMouseEnter = () => { 
-      updateRect();
-      mouse.active = true; 
-    };
-
-    const offscreenCanvas = document.createElement('canvas');
-    const offscreenCtx = offscreenCanvas.getContext('2d');
 
     const spacing = 13;
     const bSize = 0.3;
-    const radius = 280;
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = crimsonColor;
+      ctx.globalAlpha = 0.055;
+      ctx.beginPath();
+      for (let x = spacing / 2; x < width; x += spacing) {
+        for (let y = spacing / 2; y < height; y += spacing) {
+          ctx.rect(x - bSize, y - bSize, bSize * 2, bSize * 2);
+        }
+      }
+      ctx.fill();
+    };
 
     const handleResize = () => {
       const parent = container || header;
@@ -457,86 +511,14 @@ function App() {
       height = parent.offsetHeight;
       canvas.width = width;
       canvas.height = height;
-      updateRect();
-
-      // Draw static background grid onto offscreen canvas
-      offscreenCanvas.width = width;
-      offscreenCanvas.height = height;
-      if (offscreenCtx) {
-        offscreenCtx.clearRect(0, 0, width, height);
-        offscreenCtx.fillStyle = crimsonColor;
-        offscreenCtx.globalAlpha = 0.065;
-        offscreenCtx.beginPath();
-        for (let x = spacing / 2; x < width; x += spacing) {
-          for (let y = spacing / 2; y < height; y += spacing) {
-            offscreenCtx.rect(x - bSize, y - bSize, bSize * 2, bSize * 2);
-          }
-        }
-        offscreenCtx.fill();
-      }
+      render();
     };
 
-    const triggerArea = container || header;
-    triggerArea.addEventListener('mousemove', handleMouseMove as any);
-    triggerArea.addEventListener('mouseleave', handleMouseLeave);
-    triggerArea.addEventListener('mouseenter', handleMouseEnter);
     window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', updateRect, { passive: true });
-    
     handleResize();
 
-    // Render loop
-    const render = () => {
-      ctx.clearRect(0, 0, width, height);
-      
-      // 1. Draw pre-rendered static background grid
-      ctx.drawImage(offscreenCanvas, 0, 0);
-      
-      // Update mouse position with smooth but fast easing
-      const targetEase = mouse.active ? 1.0 : 0.0;
-      mouse.easeActive += (targetEase - mouse.easeActive) * 0.15;
-      mouse.x += (mouse.targetX - mouse.x) * 0.24;
-      mouse.y += (mouse.targetY - mouse.y) * 0.24;
-
-      // 2. Only draw active spotlight dots within the mouse bounding box
-      if (mouse.easeActive > 0.001) {
-        // Calculate the bounding box of the spotlight
-        const startX = Math.max(spacing / 2, Math.floor((mouse.x - radius) / spacing) * spacing + spacing / 2);
-        const endX = Math.min(width, Math.ceil((mouse.x + radius) / spacing) * spacing + spacing / 2);
-        const startY = Math.max(spacing / 2, Math.floor((mouse.y - radius) / spacing) * spacing + spacing / 2);
-        const endY = Math.min(height, Math.ceil((mouse.y + radius) / spacing) * spacing + spacing / 2);
-        
-        ctx.fillStyle = crimsonColor;
-        
-        for (let x = startX; x < endX; x += spacing) {
-          for (let y = startY; y < endY; y += spacing) {
-            const dx = x - mouse.x;
-            const dy = y - mouse.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            
-            if (dist < radius) {
-              const factor = (1 - dist / radius) * mouse.easeActive;
-              const size = bSize + factor * 2.2;
-              ctx.globalAlpha = 0.065 + factor * 0.14;
-              ctx.fillRect(x - size, y - size, size * 2, size * 2);
-            }
-          }
-        }
-        ctx.globalAlpha = 1.0;
-      }
-
-      animId = requestAnimationFrame(render);
-    };
-
-    render();
-
     return () => {
-      cancelAnimationFrame(animId);
-      triggerArea.removeEventListener('mousemove', handleMouseMove as any);
-      triggerArea.removeEventListener('mouseleave', handleMouseLeave);
-      triggerArea.removeEventListener('mouseenter', handleMouseEnter);
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', updateRect);
     };
   }, []);
 
@@ -554,7 +536,7 @@ function App() {
           src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} 
           alt="AgentTag Logo" 
           height="24" 
-          style={{ height: "24px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)", outline: "1px solid rgba(0,0,0,0.1)", outlineOffset: "-1px", borderRadius: "4px" }} 
+          style={{ height: "24px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)", borderRadius: "4px" }} 
           className="brand-logo-img" 
         />
         <span className="brand-logo-text">AgentTag</span>
@@ -624,8 +606,22 @@ function App() {
         </AnimatePresence>
       </button>
       <button aria-expanded={mobileMenuOpen} aria-label="Toggle menu" className="mobile-menu-toggle" id="mobileMenuToggle" type="button" onClick={() => setMobileMenuOpen(prev => !prev)}>
-        <svg className="icon-menu" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="16" style={{ display: mobileMenuOpen ? "none" : "inline" }}><line x1="3" x2="21" y1="12" y2="12"></line><line x1="3" x2="21" y1="6" y2="6"></line><line x1="3" x2="21" y1="18" y2="18"></line></svg>
-        <svg className="icon-close" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="16" style={{ display: mobileMenuOpen ? "inline" : "none" }}><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={mobileMenuOpen ? "close" : "menu"}
+            initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {mobileMenuOpen ? (
+              <svg className="icon-close" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>
+            ) : (
+              <svg className="icon-menu" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><line x1="3" x2="21" y1="12" y2="12"></line><line x1="3" x2="21" y1="6" y2="6"></line><line x1="3" x2="21" y1="18" y2="18"></line></svg>
+            )}
+          </motion.span>
+        </AnimatePresence>
       </button>
       <a className="btn-capsule-cta" href="#cta">Request access</a>
     </div>
@@ -648,6 +644,18 @@ function App() {
 <div id="main">
 {/* ==================== HERO BOX ==================== */}
 <div className="hero-bg-container">
+  <video
+    ref={videoRef}
+    className={`hero-bg-video ${videoLoaded ? 'is-loaded' : ''}`}
+    src="/bg_vid.mp4"
+    autoPlay
+    loop
+    muted
+    playsInline
+    onCanPlayThrough={() => setVideoLoaded(true)}
+    onPlay={() => setVideoLoaded(true)}
+    onLoadedData={() => setVideoLoaded(true)}
+  />
 {/* ==================== HERO ==================== */}
   {/* Organic SVG liquid mesh gradient background */}
   <div className="hero-svg-bg">
@@ -666,14 +674,14 @@ function App() {
 
         {/* Ambient premium monochrome glow definitions */}
         <radialGradient id="glow-amber-light" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#0072ff" stopOpacity="0.85" />
-          <stop offset="50%" stopColor="#00c6ff" stopOpacity="0.5" />
+          <stop offset="0%" stopColor="#d1d5db" stopOpacity="0.4" />
+          <stop offset="50%" stopColor="#e5e7eb" stopOpacity="0.2" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
         </radialGradient>
         <radialGradient id="glow-amber-dark" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#0072ff" stopOpacity="0.7" />
-          <stop offset="50%" stopColor="#7928ca" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="#090909" stopOpacity="0" />
+          <stop offset="0%" stopColor="#3f3f46" stopOpacity="0.5" />
+          <stop offset="50%" stopColor="#27272a" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
         </radialGradient>
 
         {/* Wave Gradients */}
@@ -682,99 +690,101 @@ function App() {
           <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="wave-grad-dark" x1="0%" y1="70%" x2="100%" y2="30%">
-          <stop offset="0%" stopColor="#090909" stopOpacity="0" />
-          <stop offset="30%" stopColor="#0055ff" stopOpacity="0.45" />
-          <stop offset="70%" stopColor="#7928ca" stopOpacity="0.75" />
-          <stop offset="100%" stopColor="#0072ff" stopOpacity="0.95" />
+          <stop offset="0%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="30%" stopColor="#27272a" stopOpacity="0.3" />
+          <stop offset="70%" stopColor="#3f3f46" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#52525b" stopOpacity="0.7" />
         </linearGradient>
         
         <linearGradient id="wave-grad-light-2" x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%" stopColor="#00c6ff" stopOpacity="0" />
-          <stop offset="40%" stopColor="#0072ff" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#0033cc" stopOpacity="0.95" />
+          <stop offset="0%" stopColor="#f3f4f6" stopOpacity="0" />
+          <stop offset="40%" stopColor="#e5e7eb" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#d1d5db" stopOpacity="0.6" />
         </linearGradient>
         <linearGradient id="wave-grad-dark-2" x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%" stopColor="#090909" stopOpacity="0" />
-          <stop offset="50%" stopColor="#7928ca" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#0072ff" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="50%" stopColor="#27272a" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#52525b" stopOpacity="0.6" />
         </linearGradient>
 
         {/* Base Background Gradients */}
         <linearGradient id="bg-base-light" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#fafafa" />
+          <stop offset="100%" stopColor="#f3f4f6" />
         </linearGradient>
         <linearGradient id="bg-base-dark" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0e0e0e" />
-          <stop offset="100%" stopColor="#090909" />
+          <stop offset="0%" stopColor="#000000" />
+          <stop offset="100%" stopColor="#0c0c0e" />
         </linearGradient>
       </defs>
       
-      {/* Base background fill */}
-      <rect width="100%" height="100%" fill={theme === 'dark' ? 'url(#bg-base-dark)' : 'url(#bg-base-light)'} />
+      {/* Base background fill removed to make background video visible */}
       
       {/* ================= LAYER 1: Deep Ambient Glows ================= */}
       <g filter="url(#liquid-blur-deep)">
-        {/* Soft Warm core glow at bottom-center-right */}
-        <ellipse 
+        {/* Single faint corner wash — the only remaining ambient glow, pulled to
+            the bottom-right so the headline sits on near-white. Premium = quiet. */}
+        <ellipse
           className="gradient-blob-1"
-          cx="950" 
-          cy="700" 
-          rx="700" 
-          ry="550" 
+          cx="1180"
+          cy="780"
+          rx="620"
+          ry="480"
           fill={theme === 'dark' ? 'url(#glow-amber-dark)' : 'url(#glow-amber-light)'}
-          opacity="0.9"
-        />
-        
-        {/* Saturated ambient blob in upper-right */}
-        <circle 
-          className="gradient-blob-2"
-          cx="1100" 
-          cy="300" 
-          r="650" 
-          fill={theme === 'dark' ? 'url(#wave-grad-dark-2)' : 'url(#wave-grad-light-2)'}
-          opacity="0.85"
+          opacity={theme === 'dark' ? 0.34 : 0.13}
         />
 
-        {/* Soft Left Ambient Glow */}
-        <ellipse 
+        {/* Saturated ambient blob in upper-right — cut hard (was 0.85) */}
+        <circle
+          className="gradient-blob-2"
+          cx="1100"
+          cy="300"
+          r="650"
+          fill={theme === 'dark' ? 'url(#wave-grad-dark-2)' : 'url(#wave-grad-light-2)'}
+          opacity={theme === 'dark' ? 0.12 : 0}
+        />
+
+        {/* Soft Left Ambient Glow — removed in light, faint in dark */}
+        <ellipse
           className="gradient-blob-3"
-          cx="150" 
-          cy="450" 
-          rx="600" 
-          ry="700" 
+          cx="150"
+          cy="450"
+          rx="600"
+          ry="700"
           fill={theme === 'dark' ? 'url(#wave-grad-dark)' : 'url(#wave-grad-light)'}
-          opacity="0.8"
+          opacity={theme === 'dark' ? 0.1 : 0}
         />
       </g>
-      
+
       {/* ================= LAYER 2: Transition Ambient Waves ================= */}
       <g filter="url(#liquid-blur-medium)">
-        {/* Right side primary wave */}
-        <path 
+        {/* Right side primary wave — dark only, very faint */}
+        <path
           className="gradient-blob-1"
-          d="M 350 900 
-             C 650 720, 950 450, 1150 200 
-             S 1380 50, 1440 0 
-             L 1440 900 
-             Z" 
+          d="M 350 900
+             C 650 720, 950 450, 1150 200
+             S 1380 50, 1440 0
+             L 1440 900
+             Z"
           fill={theme === 'dark' ? 'url(#wave-grad-dark)' : 'url(#wave-grad-light)'}
-          opacity="0.75"
+          opacity={theme === 'dark' ? 0.2 : 0}
         />
 
-        {/* Left side primary wave */}
-        <path 
+        {/* Left side primary wave — dark only, very faint */}
+        <path
           className="gradient-blob-2"
-          d="M -150 0 
-             C 150 150, 200 450, 50 900 
-             L -150 900 
-             Z" 
+          d="M -150 0
+             C 150 150, 200 450, 50 900
+             L -150 900
+             Z"
           fill={theme === 'dark' ? 'url(#wave-grad-dark-2)' : 'url(#wave-grad-light-2)'}
-          opacity="0.7"
+          opacity={theme === 'dark' ? 0.16 : 0}
         />
       </g>
     </svg>
   </div>
+
+
   <canvas className="hero-dots" id="hero-canvas"></canvas>
 <header className="aeg-wrap" id="top" style={{paddingTop: "112px", paddingBottom: "96px", position: "relative", zIndex: "1"}}>
 <div style={{display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "48px", maxWidth: "800px", margin: "0 auto", width: "100%"}}>
@@ -808,16 +818,120 @@ function App() {
             Get started now <span style={{fontFamily: "monospace", fontWeight: "600", marginLeft: "2px"}}>&gt;<span className="btn-cta-cursor">_</span></span>
 </a>
 </div>
-{/* Developer CLI pill removed as requested */}
 </div>
 </div>
 </header>
+
+{/* Product Experience Showcase */}
+<div className="aeg-wrap reveal d4" style={{ marginTop: "-30px", marginBottom: "64px", position: "relative", zIndex: "2" }}>
+  <div className="showcase-container">
+    {/* Tab Bar */}
+    <div className="showcase-tabs">
+      <button 
+        type="button"
+        className={`showcase-tab ${showcaseTab === 'overview' ? 'is-active' : ''}`}
+        onClick={() => setShowcaseTab('overview')}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+        <span>Control Plane</span>
+      </button>
+      <button 
+        type="button"
+        className={`showcase-tab ${showcaseTab === 'governance' ? 'is-active' : ''}`}
+        onClick={() => setShowcaseTab('governance')}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <span>Governance</span>
+      </button>
+      <button 
+        type="button"
+        className={`showcase-tab ${showcaseTab === 'inbox' ? 'is-active' : ''}`}
+        onClick={() => setShowcaseTab('inbox')}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        <span>Inbox Approvals</span>
+      </button>
+      <button 
+        type="button"
+        className={`showcase-tab ${showcaseTab === 'wizard' ? 'is-active' : ''}`}
+        onClick={() => setShowcaseTab('wizard')}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        <span>Setup & CLI</span>
+      </button>
+    </div>
+
+    {/* Window Frame (macOS style app shell) */}
+    <div className="showcase-window">
+      <div className="showcase-window-header">
+        <div className="window-dots">
+          <span className="dot dot-red"></span>
+          <span className="dot dot-yellow"></span>
+          <span className="dot dot-green"></span>
+        </div>
+        <div className="window-address-bar">
+          <svg width="10" height="10" style={{ marginRight: "4px" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>agenttag.ai/app/{showcaseTab}</span>
+        </div>
+      </div>
+      <div className="showcase-window-body">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={showcaseTab + '-' + theme}
+            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            style={{ width: "100%", height: "100%", display: "flex" }}
+          >
+            {showcaseTab === 'overview' && (
+              <StoreProvider>
+                <div className="aeg-dash" style={{ position: "relative", inset: "auto", width: "100%", height: "100%", minHeight: "0", background: "transparent" }}>
+                  <div className="ad-main" style={{ minHeight: "0", height: "100%" }}>
+                    <OverviewPage onNav={() => {}} />
+                  </div>
+                </div>
+              </StoreProvider>
+            )}
+            {showcaseTab === 'governance' && (
+              <StoreProvider>
+                <div className="aeg-dash" style={{ position: "relative", inset: "auto", width: "100%", height: "100%", minHeight: "0", background: "transparent" }}>
+                  <div className="ad-main" style={{ minHeight: "0", height: "100%" }}>
+                    <GovernancePage />
+                  </div>
+                </div>
+              </StoreProvider>
+            )}
+            {showcaseTab === 'inbox' && (
+              <StoreProvider>
+                <div className="aeg-dash" style={{ position: "relative", inset: "auto", width: "100%", height: "100%", minHeight: "0", background: "transparent" }}>
+                  <div className="ad-main" style={{ minHeight: "0", height: "100%" }}>
+                    <InboxPage onNav={() => {}} />
+                  </div>
+                </div>
+              </StoreProvider>
+            )}
+            {showcaseTab === 'wizard' && (
+              <StoreProvider>
+                <div className="aeg-dash" style={{ position: "relative", inset: "auto", width: "100%", height: "100%", minHeight: "0", background: "transparent" }}>
+                  <div className="ad-main" style={{ minHeight: "0", height: "100%" }}>
+                    <Wizard onClose={() => setShowcaseTab('overview')} onFinish={() => setShowcaseTab('overview')} onNav={() => {}} />
+                  </div>
+                </div>
+              </StoreProvider>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  </div>
+</div>
 </div>
 
 {/* Brand trust social proof bar — placed outside the gradient box */}
-<div className="brand-social-proof reveal d4">
+<div className="brand-social-proof reveal d5">
   <p className="infrastructure-subheader">
-    More than <span className="logo-chip">10,000 agents</span> choose AgentTag to run secure pipelines
+    Built on the infrastructure you already trust
   </p>
   <div className="brand-logos-row">
     <div className="brand-logo-item">
@@ -901,8 +1015,8 @@ function App() {
           <path d="M 610 200 L 745 150" className="messy-line tier-faint" />
 
           {/* Failure paths — each dashed line terminates exactly at its Red X */}
-          {/* err-1: node(120,170) → RedX(185,158) */}
-          <path d="M 120 170 L 185 158" className="messy-line line-err" strokeDasharray="3 3" />
+          {/* err-1: node(120,170) → RedX(185,218) */}
+          <path d="M 120 170 L 185 218" className="messy-line line-err" strokeDasharray="3 3" />
           {/* err-2: node(330,108) → RedX(320,58) */}
           <path d="M 330 108 L 320 58" className="messy-line line-err" strokeDasharray="3 3" />
           {/* err-3: node(455,160) → RedX(515,228) */}
@@ -948,7 +1062,7 @@ function App() {
 
           {/* Red X failures — soft glassmorphism blobs (graduated red wash, no hard ring) */}
           {[
-            [185, 158],
+            [185, 218],
             [320, 58],
             [515, 228],
             [700, 92],
@@ -1206,7 +1320,7 @@ function App() {
 <div className="eyebrow">
 <span className="eyebrow-num">03</span><span className="eyebrow-label">The tool surface</span>
 </div>
-<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>One MCP server. <span className="accent-it" style={{color: "var(--muted)"}}>Eight tools.</span></h2>
+<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>One MCP server. <span className="accent-it">Eight tools.</span></h2>
 <p style={{maxWidth: "540px", margin: "0 0 50px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Drop AgentTag into Claude or any MCP-compatible agent. The agent sees only these tools — behind each one sits the policy engine, the vault, and the audit ledger. It can't reach a capability except through a tool, and no tool acts without a verdict.</p>
 <div className="mcp-grid" style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", alignItems: "stretch"}}>
 {/* tool API */}
@@ -1244,7 +1358,7 @@ function App() {
 <div className="eyebrow" style={{marginBottom: "12px"}}>
 <span className="eyebrow-num">04</span><span className="eyebrow-label">Platform governing</span>
 </div>
-<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Everything you need to govern <span className="cta-dashed-highlight">AI action.</span></h2>
+<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Everything you need to govern <span className="accent-it">AI action.</span></h2>
 <p style={{maxWidth: "580px", margin: "0 0 40px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Track, analyze, and authorize every request made by your autonomous agents across hosts, tools, and networks in real time.</p>
 </div>
 <div className="policy-grid">
@@ -1319,94 +1433,100 @@ function App() {
 <h3 className="policy-card-title">Connect <span>your tools</span></h3>
 <p className="policy-card-desc">Bind third-party credentials securely behind sandboxed API surfaces.</p>
 </div>
-<div className="integration-list">
-<div className="integration-item">
-<div className="integration-meta">
-<div className="integration-logo">
-<svg fill="none" height="15" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><rect height="14" rx="2" ry="2" width="20" x="2" y="5"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
-</div>
-<div>
-<p className="integration-name">Stripe Payments</p>
-<p className="integration-desc">Process virtual cards</p>
-</div>
-</div>
-<span className="aeg-chip aeg-chip--ok">Connected</span>
-</div>
-<div className="integration-item">
-<div className="integration-meta">
-<div className="integration-logo">
-<svg fill="none" height="15" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-</div>
-<div>
-<p className="integration-name">Twilio SMS</p>
-<p className="integration-desc">Route verification codes</p>
-</div>
-</div>
-<span className="aeg-chip aeg-chip--ok">Connected</span>
-</div>
-<div className="integration-item">
-<div className="integration-meta">
-<div className="integration-logo">
-<svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-</div>
-<div>
-<p className="integration-name">GitHub Actions</p>
-<p className="integration-desc">Scoped deploy tokens</p>
-</div>
-</div>
-<span className="aeg-chip aeg-chip--ok">Connected</span>
-</div>
-{extraTools.map((t) => (
-<div className="integration-item" key={t.name}>
-<div className="integration-meta">
-<div className="integration-logo">
-<svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path></svg>
-</div>
-<div>
-<p className="integration-name">{t.name}</p>
-<p className="integration-desc">{t.desc}</p>
-</div>
-</div>
-<span className={t.status === "connecting" ? "aeg-chip" : "aeg-chip aeg-chip--ok"} style={t.status === "connecting" ? {color: "var(--ink)", background: "var(--surface)", borderColor: "var(--line)"} : undefined}>{t.status === "connecting" ? "Connecting…" : "Connected"}</span>
-</div>
-))}
-<button className="integration-add" type="button" onClick={connectTool} disabled={extraTools.length >= newToolPool.length}>
-<svg fill="none" height="12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24" width="12"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
-{extraTools.length >= newToolPool.length ? "All tools connected" : "Connect new tool"}
-</button>
-</div>
-</div>
-{/* Box 4 (col-4): Biometric WebAuthn consent */}
-<div className="card policy-card col-4">
-<div>
-<h3 className="policy-card-title">Biometric <span>consent</span></h3>
-<p className="policy-card-desc">Fails closed on timeouts. Authorizations require on-device biometric check signed by your key.</p>
-</div>
-<div className="scanner-wrap">
-<div className="scanner-glow"></div>
-<div className="scanner-face-overlay"></div>
-{/* Biometric Face / Fingerprint Stylized SVG */}
-<svg fill="none" height="150" style={{opacity: "0.95"}} viewBox="0 0 200 200" width="150" xmlns="http://www.w3.org/2000/svg">
-{/* Outer dashed circles — slow counter-rotating rings */}
-<g className="scanner-rings">
-<circle cx="100" cy="100" fill="none" opacity="0.25" r="70" stroke="var(--crimson)" strokeDasharray="4 4" strokeWidth="1"></circle>
-</g>
-<g className="scanner-rings scanner-rings--rev">
-<circle cx="100" cy="100" fill="none" opacity="0.15" r="50" stroke="var(--crimson)" strokeDasharray="3 3" strokeWidth="1"></circle>
-</g>
-{/* Concentric arches (waves) */}
-<path d="M 60 95 A 40 40 0 0 1 140 95" fill="none" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="2"></path>
-<path d="M 75 95 A 25 25 0 0 1 125 95" fill="none" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="2"></path>
-<path d="M 90 95 A 10 10 0 0 1 110 95" fill="none" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="2"></path>
-{/* Horizontal base line */}
-<line opacity="0.3" stroke="var(--crimson)" strokeLinecap="round" strokeWidth="1.5" x1="45" x2="155" y1="115" y2="115"></line>
-{/* Vertical pill key */}
-<rect fill="var(--surface-2)" height="32" rx="6" stroke="var(--crimson)" strokeWidth="2" width="12" x="94" y="100"></rect>
-<line stroke="var(--crimson)" strokeLinecap="round" strokeWidth="1.5" x1="100" x2="100" y1="106" y2="116"></line>
-</svg>
-<div className="scanner-bar"></div>
-<div className="scanner-indicator"><svg fill="none" height="9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" width="9" style={{marginRight: "5px", verticalAlign: "-1px"}}><polyline points="20 6 9 17 4 12"></polyline></svg>Passkey Ready</div>
-</div>
+      <div className="integration-list">
+        <div className="integration-item">
+          <div className="integration-meta">
+            <div className="integration-logo">
+              {/* Stripe - outline credit card SVG */}
+              <svg fill="none" height="15" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><rect height="14" rx="2" ry="2" width="20" x="2" y="5"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
+            </div>
+            <div>
+              <p className="integration-name">Stripe Payments</p>
+              <p className="integration-desc">Process virtual cards</p>
+            </div>
+          </div>
+          <span className="aeg-chip aeg-chip--ok">Connected</span>
+        </div>
+        <div className="integration-item">
+          <div className="integration-meta">
+            <div className="integration-logo">
+              {/* GitHub - outline git branch SVG */}
+              <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+            </div>
+            <div>
+              <p className="integration-name">GitHub Actions</p>
+              <p className="integration-desc">Scoped deploy tokens</p>
+            </div>
+          </div>
+          <span className="aeg-chip aeg-chip--ok">Connected</span>
+        </div>
+        {extraTools.map((t) => {
+          return (
+            <div className="integration-item" key={t.name}>
+              <div className="integration-meta">
+                <div className="integration-logo">
+                  {toolIcons[t.name] || (
+                    <svg fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24" width="15"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path></svg>
+                  )}
+                </div>
+                <div>
+                  <p className="integration-name">{t.name}</p>
+                  <p className="integration-desc">{t.desc}</p>
+                </div>
+              </div>
+              <span className={t.status === "connecting" ? "aeg-chip" : "aeg-chip aeg-chip--ok"} style={t.status === "connecting" ? {color: "var(--ink)", background: "var(--surface)", borderColor: "var(--line)"} : undefined}>{t.status === "connecting" ? "Connecting…" : "Connected"}</span>
+            </div>
+          );
+        })}
+        {extraTools.length < newToolPool.length && (
+          <button className="integration-add" type="button" onClick={connectTool}>
+            <svg fill="none" height="12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24" width="12"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
+            Connect new tool
+          </button>
+        )}
+      </div>
+    </div>
+    {/* Box 4 (col-4): Biometric WebAuthn consent */}
+    <div className="card policy-card col-4">
+      <div>
+        <h3 className="policy-card-title">Biometric <span>consent</span></h3>
+        <p className="policy-card-desc">Fails closed on timeouts. Authorizations require on-device biometric check signed by your key.</p>
+      </div>
+      <div className="scanner-wrap">
+        <div className="scanner-glow"></div>
+        <div className="scanner-face-overlay"></div>
+        {/* Biometric Face / Fingerprint Stylized SVG */}
+        <svg fill="none" height="150" style={{opacity: "0.95"}} viewBox="0 0 200 200" width="150" xmlns="http://www.w3.org/2000/svg">
+          {/* Outer dashed circles — slow counter-rotating rings */}
+          <g className="scanner-rings">
+            <circle cx="100" cy="100" fill="none" opacity="0.2" r="75" stroke="var(--crimson)" strokeDasharray="4 4" strokeWidth="1"></circle>
+          </g>
+          <g className="scanner-rings scanner-rings--rev">
+            <circle cx="100" cy="100" fill="none" opacity="0.12" r="55" stroke="var(--crimson)" strokeDasharray="3 3" strokeWidth="1"></circle>
+          </g>
+          {/* Tech Scanner Corners */}
+          <path d="M 40 60 L 40 40 L 60 40" fill="none" stroke="var(--crimson)" strokeWidth="1.5" opacity="0.5" strokeLinecap="round" strokeLinejoin="round"></path>
+          <path d="M 160 60 L 160 40 L 140 40" fill="none" stroke="var(--crimson)" strokeWidth="1.5" opacity="0.5" strokeLinecap="round" strokeLinejoin="round"></path>
+          <path d="M 40 140 L 40 160 L 60 160" fill="none" stroke="var(--crimson)" strokeWidth="1.5" opacity="0.5" strokeLinecap="round" strokeLinejoin="round"></path>
+          <path d="M 160 140 L 160 160 L 140 160" fill="none" stroke="var(--crimson)" strokeWidth="1.5" opacity="0.5" strokeLinecap="round" strokeLinejoin="round"></path>
+          {/* Scanning Grid lines */}
+          <line x1="100" y1="25" x2="100" y2="175" stroke="var(--crimson)" strokeWidth="0.5" opacity="0.08" strokeDasharray="2 4"></line>
+          <line x1="25" y1="100" x2="175" y2="100" stroke="var(--crimson)" strokeWidth="0.5" opacity="0.08" strokeDasharray="2 4"></line>
+          <g transform="translate(50, 50) scale(4.2)" stroke="var(--crimson)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="none">
+            <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
+            <path d="M14 13.12c0 2.38 0 6.38-1 8.88" />
+            <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" />
+            <path d="M2 12a10 10 0 0 1 18-6" />
+            <path d="M2 16h.01" />
+            <path d="M21.8 16c.2-2 .131-5.354 0-6" />
+            <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" />
+            <path d="M8.65 22c.21-.66.45-1.32.57-2" />
+            <path d="M9 6.8a6 6 0 0 1 9 5.2v2" />
+          </g>
+        </svg>
+        <div className="scanner-bar"></div>
+        <div className="scanner-indicator"><svg fill="none" height="9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" width="9" style={{marginRight: "5px", verticalAlign: "-1px"}}><polyline points="20 6 9 17 4 12"></polyline></svg>Passkey Ready</div>
+      </div>
 </div>
 {/* Box 5 (col-4): Durable mandates ledger */}
 <div className="card policy-card col-4">
@@ -1448,11 +1568,11 @@ function App() {
 </section>
 {/* ==================== APPROVAL LOOP ==================== */}
 <section className="aeg-section aeg-wrap">
-<div className="panel-dark" style={{padding: "0"}}>
+<div className="panel-dark" style={{padding: "0", borderRadius: "24px"}}>
 <div className="grid-2 z" style={{display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: "0"}}>
 <div style={{padding: "52px 44px"}}>
 <span className="kicker" style={{color: "var(--crimson-br)"}}>The human holds the pen</span>
-<h2 className="display" style={{margin: "16px 0 16px", fontSize: "clamp(33px, 4.4vw, 52px)", lineHeight: "1.06", color: "var(--ink)"}}>Interrupted only when it <span className="accent-it" style={{color: "var(--crimson-br)"}}>genuinely matters.</span></h2>
+<h2 className="display" style={{margin: "16px 0 16px", fontSize: "clamp(33px, 4.4vw, 52px)", lineHeight: "1.06", color: "var(--ink)"}}>Interrupted only when it <span className="accent-it">genuinely matters.</span></h2>
 <p style={{maxWidth: "440px", margin: "0 0 28px", fontSize: "16px", lineHeight: "1.7", color: "var(--muted)"}}>Routine work runs untouched. When the agent reaches a new payee, a spend over your threshold, or anything irreversible, it pauses and asks — and your approval is signed on-device, never a blank cheque.</p>
 <div style={{display: "flex", flexWrap: "wrap", gap: "10px"}}>
 <span className="mono" style={{fontSize: "12.5px", color: "var(--muted)", padding: "7px 13px", borderRadius: "8px", background: "var(--paper)", border: "1px solid var(--line)"}}>Always-allow learns your boundaries</span>
@@ -1460,7 +1580,7 @@ function App() {
 </div>
 </div>
 <div className="approval-visual-col">
-<div className="approval-card" style={{position: "relative", width: "100%", maxWidth: "320px", borderRadius: "20px", padding: "22px", background: "var(--paper-2)", WebkitBackdropFilter: "blur(16px) saturate(1.4)", backdropFilter: "blur(16px) saturate(1.4)", border: "1px solid var(--line)", boxShadow: "var(--shadow-lift)"}}>
+<div className="approval-card" style={{position: "relative", width: "100%", maxWidth: "320px", borderRadius: "8px", padding: "22px", background: "var(--paper-2)", WebkitBackdropFilter: "blur(16px) saturate(1.4)", backdropFilter: "blur(16px) saturate(1.4)", border: "1px solid var(--line)", boxShadow: "var(--shadow-lift)"}}>
 <div style={{display: "flex", alignItems: "center", gap: "9px", marginBottom: "16px"}}>
   <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="18" style={{ height: "18px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
 <span style={{fontWeight: "700", fontSize: "13px", color: "var(--ink)"}}>AgentTag</span>
@@ -1503,7 +1623,7 @@ function App() {
 <div className="eyebrow">
 <span className="eyebrow-num">05</span><span className="eyebrow-label">Audit ledger</span>
 </div>
-<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Every action, signed <span className="accent-it" style={{color: "var(--muted)"}}>and chained.</span></h2>
+<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Every action, signed <span className="accent-it">and chained.</span></h2>
 <p style={{maxWidth: "520px", margin: "0 0 50px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>A tamper-evident ledger records every decision — hash-chained, so history can't be quietly rewritten.</p>
 <div className="panel-dark">
 <div className="z" style={{display: "flex", alignItems: "center", gap: "10px", padding: "15px 20px", borderBottom: "1px solid var(--line)"}}>
@@ -1513,7 +1633,7 @@ function App() {
 </div>
 <div className="mono z" style={{padding: "6px 0", fontSize: "13px", minHeight: "284px"}}>
 {ledgerRows.map((row, idx) => (
-<div key={(row as any).key ?? row.seq ?? idx} className="row-led" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid var(--line)", animation: "aeg-rise .4s var(--ease)"}}>
+<div key={row.seq ?? idx} className="row-led" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid var(--line)", animation: "aeg-rise .4s var(--ease)"}}>
 <span style={{color: "var(--faint)"}}>#{row.seq}</span>
 <span style={{color: "var(--muted)", fontSize: "11.5px"}}>{row.ev}</span>
 <span style={{color: "var(--ink-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{row.act}</span>
@@ -1590,7 +1710,7 @@ function App() {
 </div>
 <div className="field-row">
 <span className="field-k">Step-up above</span>
-<span style={{display: "flex", alignItems: "center", gap: "9px"}}><span className="field-v" style={{color: "var(--ink)"}}>$100.00</span><span className="toggle-on" style={{background: "var(--ink)", boxShadow: "var(--shadow-card)"}}></span></span>
+<span style={{display: "flex", alignItems: "center", gap: "9px"}}><span className="field-v" style={{color: "var(--ink)"}}>$100.00</span><span className="toggle-on"></span></span>
 </div>
 <div className="field-row">
 <span className="field-k">Expires</span>

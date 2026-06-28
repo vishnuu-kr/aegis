@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Plug, Settings as SettingsIcon, Sun, Moon,
@@ -61,35 +62,36 @@ function Sidebar({ route, nav }: { route: RouteKey; nav: (k: RouteKey) => void }
   const renderItem = (n: typeof NAV[number]) => {
     const active = route === n.key;
     return (
-      <button
-        key={n.key}
-        title={n.label}
-        className={`ad-nav-item${active ? " is-active" : ""}`}
-        onClick={() => nav(n.key)}
-        style={{ position: "relative", isolation: "isolate" }}
-      >
-        {active && (
-          <motion.div
-            layoutId="active-nav-bg"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "var(--d-soft)",
-              borderRadius: "6px",
-              zIndex: -1,
-            }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-          />
-        )}
-        {n.icon}
-        <span>{n.label}</span>
-        {n.key === "inbox" && approvals.length > 0 && <span className="ad-nav-badge tnum">{approvals.length}</span>}
-      </button>
+      <span key={n.key} className="ad-nav-item-wrap">
+        <button
+          className={`ad-nav-item${active ? " is-active" : ""}`}
+          onClick={() => nav(n.key)}
+          style={{ position: "relative", isolation: "isolate" }}
+        >
+          {active && (
+            <motion.div
+              layoutId="active-nav-bg"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "var(--d-soft)",
+                borderRadius: "var(--d-r-sm)",
+                zIndex: -1,
+              }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          {n.icon}
+          <span>{n.label}</span>
+          {n.key === "inbox" && approvals.length > 0 && <span className="ad-nav-badge tnum">{approvals.length}</span>}
+        </button>
+        <span className="ad-nav-tooltip" role="tooltip">{n.label}</span>
+      </span>
     );
   };
 
   return (
-    <aside className="ad-side" style={{ background: "var(--d-bg-2)", borderRight: "1px solid var(--d-line)" }}>
+    <aside className="ad-side">
       {/* Brand Header */}
       <div className="ad-brand" style={{ display: "flex", alignItems: "center", gap: "10px", paddingBottom: "2px" }}>
         <img 
@@ -114,38 +116,47 @@ function Sidebar({ route, nav }: { route: RouteKey; nav: (k: RouteKey) => void }
 
 
       <div className="ad-side-foot">
-        <button className="ad-theme-toggle" onClick={toggleTheme} type="button" style={{ position: "relative", overflow: "hidden", marginBottom: "4px" }}>
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span
-              key={dark ? "dark" : "light"}
-              initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
-              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
-              transition={{ type: "spring", duration: 0.3, bounce: 0 }}
-              style={{ display: "flex", alignItems: "center", gap: 9 }}
-            >
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-              <span>{dark ? "Light mode" : "Dark mode"}</span>
-            </motion.span>
-          </AnimatePresence>
-        </button>
+        <span className="ad-nav-item-wrap">
+          <button className="ad-theme-toggle" onClick={toggleTheme} type="button" style={{ position: "relative", overflow: "hidden", marginBottom: "4px", width: "100%" }}>
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={dark ? "dark" : "light"}
+                initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                style={{ display: "flex", alignItems: "center", gap: 9 }}
+              >
+                {dark ? <Sun size={16} /> : <Moon size={16} />}
+                <span>{dark ? "Light mode" : "Dark mode"}</span>
+              </motion.span>
+            </AnimatePresence>
+          </button>
+          <span className="ad-nav-tooltip" role="tooltip">{dark ? "Light mode" : "Dark mode"}</span>
+        </span>
 
-        <button
-          className={`ad-nav-item${route === "support" ? " is-active" : ""}`}
-          onClick={() => nav("support")}
-          style={{ padding: "8px 10px", marginBottom: "8px" }}
-        >
-          <LifeBuoy size={16} />
-          <span>Support</span>
-        </button>
+        <span className="ad-nav-item-wrap">
+          <button
+            className={`ad-nav-item${route === "support" ? " is-active" : ""}`}
+            onClick={() => nav("support")}
+            style={{ padding: "8px 10px", marginBottom: "8px", width: "100%" }}
+          >
+            <LifeBuoy size={16} />
+            <span>Support</span>
+          </button>
+          <span className="ad-nav-tooltip" role="tooltip">Support</span>
+        </span>
 
-        <div className="ad-agentcard">
-          <span className="av"><Cpu size={16} /></span>
-          <div>
-            <b>Aegis Agent</b>
-            <span className="mono">did:key:z6MkvS…W8X23b</span>
+        <span className="ad-nav-item-wrap">
+          <div className="ad-agentcard">
+            <span className="av"><Cpu size={16} /></span>
+            <div>
+              <b>Aegis Agent</b>
+              <span className="mono">did:key:z6MkvS…W8X23b</span>
+            </div>
           </div>
-        </div>
+          <span className="ad-nav-tooltip" role="tooltip">Aegis Agent (did:key:z6MkvS…)</span>
+        </span>
       </div>
     </aside>
   );

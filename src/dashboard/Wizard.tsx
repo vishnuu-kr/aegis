@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  X, ArrowRight, ArrowLeft, Check, KeyRound, Cpu, Plug, Sparkles, Copy,
+  X, ArrowRight, ArrowLeft, Check, KeyRound, Cpu, Plug, Copy,
 } from "lucide-react";
 import { useStore } from "./data";
 import { Btn, Chip, Toggle } from "./ui";
@@ -64,7 +64,7 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
       >
         <div className="ad-wiz-rail">
           <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 4px 18px" }}>
-            <span className="ad-brand-mark" style={{ width: 26, height: 26 }}><Sparkles size={14} /></span>
+            <span className="ad-brand-mark" style={{ width: 26, height: 26 }}><Cpu size={14} /></span>
             <b style={{ fontSize: 14 }}>Setup</b>
           </div>
           {STEPS.map((s, i) => (
@@ -164,7 +164,14 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
               <div className="ad-seg" style={{ marginBottom: 16 }}>
                 {(["claude", "chatgpt", "custom"] as const).map((c) => (
                   <button key={c} className={client === c ? "is-active" : ""} onClick={() => setClient(c)}>
-                    {c === "claude" ? "Claude" : c === "chatgpt" ? "ChatGPT" : "Custom"}
+                    {client === c && (
+                      <motion.div
+                        layoutId="active-seg-wizard"
+                        className="ad-seg-pill"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <span>{c === "claude" ? "Claude" : c === "chatgpt" ? "ChatGPT" : "Custom"}</span>
                   </button>
                 ))}
               </div>
