@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# AgentTag.ai
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> Identity for AI agents · Free public beta
 
-Currently, two official plugins are available:
+AgentTag is the control plane that gives every autonomous agent its own cryptographic identity, signed mandates, and tamper-evident audit trail — so an agent can act on your behalf without ever acting without you.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This repository contains the marketing landing page and the demo control-plane surface. Live product: <https://agenttag.ai>.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Stack
 
-## Expanding the ESLint configuration
+- **React 19** — UI runtime
+- **Vite 8** — dev server + build
+- **TypeScript** — strict types
+- **Framer Motion** — micro-interactions, hero reveals
+- **Lenis** — smooth scroll
+- **Playwright** — end-to-end coverage
+- **axe-core** — accessibility audits on Landing Page + Dashboard
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+No backend is shipped in this repository. The demo control-plane at `#/app/*` shows realistic-but-mocked operational data.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Quick start
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Start the Vite dev server |
+| `npm run build` | Type-check (`tsc -b`) then build to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | ESLint over `src/` |
+| `npx playwright test` | Run the full E2E suite (auto-starts dev server) |
+| `npx playwright test landing.spec.ts` | Single suite |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Environment
+
+This repo reads no secrets at build time. To wire the deferred features (newsletter endpoint, pricing checkout, real auth), see `TODO.md`.
+
+## Project layout
+
 ```
+src/
+  App.tsx                Landing page (single page, anchored sections)
+  Router.tsx             Hash router: landing / dashboard / footer stubs
+  StubPage.tsx           Branded stub for footer legal/content pages
+  main.tsx               Bootstraps React, mounts <Router>
+  index.css              Design tokens, components, dark theme overrides
+  components/WorldMap.tsx
+  dashboard/             Mock control-plane UI prefixed by /#/app/*
+public/                 Static assets (logos, video, robots, sitemap)
+tests/                   Playwright spec files
+TODO.md                  Deferred work (post-launch)
+```
+
+## Conventions
+
+- Hash routing only (`/`, `/#/app/dashboard`, `/#/terms`, …). No `react-router` is installed by design.
+- Footer stubs are React components rendered through `<StubPage>`. New stubs: add a slug to `STUB_ROUTES` in `src/Router.tsx` + a copy block in `src/StubPage.tsx`.
+- Theme is attribute-driven (`<html data-theme="dark">`). Toggle persists in `localStorage.aeg-theme`.
+
+## Deploy
+
+Build → upload `dist/`. Recommended targets: Vercel, Netlify, Cloudflare Pages. See `TODO.md` for the post-launch CI workflow.
+
+## License
+
+Proprietary. © 2026 AgentTag.ai.

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Beta hash-routed SPA — let crawlers follow #anchors as easily as possible.
+Disallow: /api/
+
+Sitemap: https://agenttag.ai/sitemap.xml

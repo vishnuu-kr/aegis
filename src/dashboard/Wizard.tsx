@@ -79,7 +79,7 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
         </div>
 
         <div className="ad-wiz-body" style={{ position: "relative" }}>
-          <button className="ad-iconbtn" style={{ position: "absolute", top: 18, right: 18 }} onClick={onClose} aria-label="Skip wizard"><X /></button>
+          <button className="ad-iconbtn" style={{ position: "absolute", top: 18, right: 18, zIndex: 10 }} onClick={onClose} aria-label="Skip wizard"><X /></button>
           <p style={{ fontSize: 12, color: "var(--d-faint)", margin: "0 0 8px", letterSpacing: ".04em" }}>
             Setup wizard · step {step + 1} of {STEPS.length}
           </p>

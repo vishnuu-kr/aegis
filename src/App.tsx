@@ -1,3 +1,4 @@
+import RotatingWord from "./components/RotatingWord"
 import { useState, useEffect, useRef } from "react"
 import { MotionConfig, motion, AnimatePresence } from "framer-motion"
 import WorldMap from "./components/WorldMap"
@@ -102,6 +103,9 @@ const toolIcons: Record<string, React.ReactNode> = {
 function App() {
   const [videoLoaded, setVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const showcaseRef = useRef<HTMLDivElement>(null);
+  const ctaRef = useRef<HTMLAnchorElement>(null);
+  const isCtaHoveredRef = useRef(false);
 
   useEffect(() => {
     if (videoRef.current && videoRef.current.readyState >= 3) {
@@ -257,6 +261,125 @@ function App() {
     };
   }, []);
 
+  // 1. Card interactive mouse listeners (3D tilt & Spotlight border glow - decoupled)
+  useEffect(() => {
+    const prefersReduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduce) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      // Handle spotlight coordinates
+      const spotlightTarget = (e.target as HTMLElement).closest('.card-spotlight') as HTMLElement;
+      if (spotlightTarget) {
+        const rect = spotlightTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        spotlightTarget.style.setProperty('--mx', `${x}px`);
+        spotlightTarget.style.setProperty('--my', `${y}px`);
+      }
+
+      // Handle 3D tilt
+      const tiltTarget = (e.target as HTMLElement).closest('.card-tilt') as HTMLElement;
+      if (tiltTarget) {
+        const rect = tiltTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Calculate teeny-tiny rotation X and Y (max 2.5 degrees)
+        const rx = ((y / rect.height - 0.5) * -5).toFixed(2);
+        const ry = ((x / rect.width - 0.5) * 5).toFixed(2);
+        
+        tiltTarget.style.setProperty('--rx', `${rx}deg`);
+        tiltTarget.style.setProperty('--ry', `${ry}deg`);
+      }
+    };
+
+    const onMouseOut = (e: MouseEvent) => {
+      const tiltTarget = (e.target as HTMLElement).closest('.card-tilt') as HTMLElement;
+      if (tiltTarget) {
+        const related = e.relatedTarget as HTMLElement;
+        if (!related || !tiltTarget.contains(related)) {
+          tiltTarget.style.setProperty('--rx', '0deg');
+          tiltTarget.style.setProperty('--ry', '0deg');
+        }
+      }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseout', onMouseOut);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseout', onMouseOut);
+    };
+  }, []);
+
+  // 2. Scroll-driven 3D Showcase Unfolding
+  useEffect(() => {
+    const prefersReduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduce) return;
+
+    const handleScroll = () => {
+      if (!showcaseRef.current) return;
+      const rect = showcaseRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      
+      const startScroll = viewportHeight;
+      const endScroll = 220;
+      
+      const progress = Math.max(0, Math.min(1, (startScroll - rect.top) / (startScroll - endScroll)));
+      
+      const rx = (8 * (1 - progress)).toFixed(2);
+      const ty = (20 * (1 - progress)).toFixed(2);
+      const scale = (0.97 + 0.03 * progress).toFixed(3);
+      
+      showcaseRef.current.style.setProperty('--showcase-rx', `${rx}deg`);
+      showcaseRef.current.style.setProperty('--showcase-ty', `${ty}px`);
+      showcaseRef.current.style.setProperty('--showcase-scale', scale);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  // 3. Magnetic CTA gravity
+  useEffect(() => {
+    const prefersReduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduce) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!ctaRef.current) return;
+      
+      const rect = ctaRef.current.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      const threshold = 90;
+      if (distance < threshold) {
+        const power = (threshold - distance) / threshold;
+        const tx = dx * 0.12 * power;
+        const ty = dy * 0.12 * power;
+        
+        const isHovered = isCtaHoveredRef.current;
+        ctaRef.current.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) translateY(${isHovered ? -2 : 0}px) scale(${isHovered ? 1.02 : 1})`;
+      } else {
+        const isHovered = isCtaHoveredRef.current;
+        ctaRef.current.style.transform = `translate(0px, 0px) translateY(${isHovered ? -2 : 0}px) scale(${isHovered ? 1.02 : 1})`;
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
+
   // State & simulation data
   const scenarios = [
     { req: "pay $5.00 → vercel · saas", v: "ALLOW" },
@@ -268,7 +391,7 @@ function App() {
   const ledgerPool = [
     { ev: "policy", act: "pay $5.00 → vercel · saas", v: "ALLOW" },
     { ev: "action", act: "deploy thing.agents.host", v: "NOTICE" },
-    { ev: "cred_use", act: "vault → github_agent", v: "-" },
+    { ev: "cred_use", act: "vault → github_agent", v: "ALLOW" },
     { ev: "policy", act: "browse linear.app · signup", v: "ALLOW" },
     { ev: "comms", act: "await_verification · inbox", v: "OK" },
     { ev: "policy", act: "pay $840 → acme data · new", v: "STEP-UP" },
@@ -294,12 +417,12 @@ function App() {
   };
 
   const [pIdx, setPIdx] = useState(0);
-  const seqRef = useRef(1046);
+  const seqRef = useRef(1310);
   const ledKeyRef = useRef(0);
   const [ledger, setLedger] = useState(() =>
-    ledgerPool.slice(0, 6).map((e, i) => ({ ...e, seq: 1041 + i, hash: genHash(), key: i }))
+    ledgerPool.slice(0, 7).map((e, i) => ({ ...e, seq: 1304 + i, hash: genHash(), key: i }))
   );
-  const [count, setCount] = useState(1047);
+  const [count, setCount] = useState(1311);
 
   // ---- Interactive demo controls ----
   // Approval card (STEP-UP → APPROVED / DENIED, reversible)
@@ -334,28 +457,28 @@ function App() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const faqItems = [
     {
-      q: "What exactly is an agent “passport”?",
-      a: "Every agent gets its own cryptographic identity — an Ed25519 DID that signs each request and audit entry. It's the agent's own credential, not a copy of yours, so you can scope it tightly and revoke it instantly.",
+      q: "What exactly is an agent passport?",
+      a: "An agent passport is the agent’s own cryptographic identity. It signs requests and audit entries so permissions can be scoped and revoked cleanly.",
     },
     {
       q: "How is this different from giving an agent my API keys?",
-      a: "Shared keys can't be scoped, attributed, or revoked per-agent. AgentTag issues each agent a distinct identity governed by signed mandates, so every action is authorized, attributable, and reversible with a single revocation.",
+      a: "API keys give broad access to whoever has them. AgentTag gives each agent a separate identity with narrow, policy-based permissions.",
     },
     {
       q: "What does “governed by mandates” mean in practice?",
-      a: "A mandate is a cryptographically signed policy you sign as the accountable human. It defines what an agent may do — spend limits, allowed merchants, step-up approvals — and the policy engine enforces it in real time before any action runs.",
+      a: "It means the rules are defined as policy: what the agent can do, how much it can spend, when it must ask for approval, and when access expires.",
     },
     {
       q: "Which clients and tools does it work with?",
-      a: "AgentTag is MCP-native: a single server exposes a standard tool surface to Claude, ChatGPT, or your own client libraries. Connect once and every capability is governed and logged automatically.",
+      a: "AgentTag works with MCP-compatible and A2A-style clients, including tools like Claude Desktop, CrewAI, and LangChain.",
     },
     {
       q: "Is the audit ledger really tamper-evident?",
-      a: "Yes. Every decision is recorded in a hash-chained ledger where each entry links to the previous one, so history can't be quietly rewritten. The chain is independently verifiable.",
+      a: "Yes. Actions are hash-chained so history can be verified and quietly altered entries are much harder to hide.",
     },
     {
       q: "What does it cost during the beta?",
-      a: "AgentTag is free while we're in public beta. Founding-user pricing locks in for early teams, and enterprise SSO, SLAs, and on-prem options are available when you need them.",
+      a: "Nothing. The public beta is free.",
     },
   ];
 
@@ -455,7 +578,7 @@ function App() {
     }, 2400);
 
     // Ledger log entry pusher
-    ledKeyRef.current = 5;
+    ledKeyRef.current = 6;
     const ledInterval = setInterval(() => {
       const nextSeq = seqRef.current + 1;
       seqRef.current = nextSeq;
@@ -795,36 +918,43 @@ function App() {
 <span style={{position: "absolute", inset: "0", borderRadius: "50%", background: "var(--ok)", animation: "aeg-ping 1.8s var(--ease) infinite"}}></span>
 <span className="dot" style={{width: "8px", height: "8px", background: "var(--ok)", boxShadow: "0 0 8px var(--ok)"}}></span>
 </span>
-<span>Now in public beta <span style={{color: "var(--faint)"}}>— free to use</span></span>
-<span style={{color: "var(--faint)"}}>→</span>
+<span>Now in public beta <span style={{opacity: 0.55}}>— free to use</span></span>
 </a>
-<h1 className="display reveal d1" style={{margin: "0", fontSize: "clamp(40px, 5.2vw, 64px)", lineHeight: "1.03", letterSpacing: "-.025em", textAlign: "center"}}>
-          Identity for AI agents.<br/>
-<span className="accent-it">Not yours — theirs.</span>
+<h1 className="display reveal d1" style={{margin: "0", fontSize: "clamp(36px, 5.2vw, 60px)", lineHeight: "1.25", letterSpacing: "-.025em", textAlign: "center", textWrap: "balance"}}>
+          Give every agent <span style={{ whiteSpace: "nowrap" }}>its own <RotatingWord />.</span>
 </h1>
-<p className="reveal d2" style={{maxWidth: "620px", margin: "24px auto 0", fontSize: "clamp(16px, 1.5vw, 18px)", lineHeight: "1.68", color: "var(--muted)", textAlign: "center"}}>
-          The control plane that gives an autonomous agent its own credentials, inbox, phone, cards, and compute — governed by cryptographic mandates you sign, revocable with a single key.
+<p className="reveal d2" style={{maxWidth: "640px", margin: "24px auto 0", fontSize: "clamp(16px, 1.5vw, 18px)", lineHeight: "1.68", color: "var(--ink-soft)", opacity: 0.82, textAlign: "center"}}>
+          The control plane that gives every agent its own credentials and audit trail — governed by signed mandates you control and can revoke in one step.
         </p>
-<div className="hero-row reveal d3" style={{display: "flex", gap: "24px", alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginTop: "36px", marginBottom: "22px"}}>
-{/* 1 min setup badge */}
-<div style={{display: "flex", alignItems: "center", gap: "8px", color: "var(--muted)", fontSize: "14.5px", fontWeight: "590", letterSpacing: "-0.15px", userSelect: "none"}}>
-<svg fill="none" height="15" style={{flex: "none", color: "var(--crimson)"}} viewBox="0 0 24 24" width="15">
-<path d="M12 2C12 12 2 12 2 12C2 12 12 12 12 22C12 12 22 12 22 12C22 12 12 12 12 2" fill="currentColor"></path>
-</svg>
-<span>1 min setup</span>
-</div>
-{/* Pill CTA Button */}
-<a className="btn-cta-primary" href="#/app/dashboard">
-            Get started now <span style={{fontFamily: "monospace", fontWeight: "600", marginLeft: "2px"}}>&gt;<span className="btn-cta-cursor">_</span></span>
+<div className="hero-row reveal d3" style={{display: "flex", gap: "16px", alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginTop: "32px"}}>
+<a 
+  ref={ctaRef}
+  className="btn-cta-primary" 
+  href="#cta"
+  onMouseEnter={() => { isCtaHoveredRef.current = true; }}
+  onMouseLeave={() => {
+    isCtaHoveredRef.current = false;
+    if (ctaRef.current) {
+      ctaRef.current.style.transform = "translate(0px, 0px) translateY(0px) scale(1)";
+    }
+  }}
+>
+            Get beta access <span style={{fontFamily: "monospace", fontWeight: "600", marginLeft: "2px"}}>&gt;<span className="btn-cta-cursor">_</span></span>
+</a>
+<a className="btn btn-ghost" href="#surface" style={{padding: "12.5px 28px"}}>
+            Read the docs
 </a>
 </div>
+<p className="reveal d3" style={{marginTop: "28px", fontSize: "13.5px", color: "var(--ink-soft)", opacity: 0.65, textAlign: "center", letterSpacing: "0.02em"}}>
+  No shared secrets. &nbsp;·&nbsp; No loose scripts. &nbsp;·&nbsp; One control plane.
+</p>
 </div>
 </div>
 </header>
 
 {/* Product Experience Showcase */}
-<div className="aeg-wrap reveal d4" style={{ marginTop: "-30px", marginBottom: "64px", position: "relative", zIndex: "2" }}>
-  <div className="showcase-container">
+<div className="aeg-wrap reveal d4 showcase-scroll-3d" style={{ marginTop: "-30px", marginBottom: "64px", position: "relative", zIndex: "2" }}>
+  <div className="showcase-container showcase-container-tilt" ref={showcaseRef}>
     {/* Tab Bar */}
     <div className="showcase-tabs">
       <button 
@@ -931,32 +1061,24 @@ function App() {
 {/* Brand trust social proof bar — placed outside the gradient box */}
 <div className="brand-social-proof reveal d5">
   <p className="infrastructure-subheader">
-    Built on the infrastructure you already trust
+    Built for:
   </p>
   <div className="brand-logos-row">
     <div className="brand-logo-item">
-      <span className="brand-logo-icon"><svg fill="none" viewBox="0 0 24 24"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.32 1.768-1.32 2.051 0 4.166.853 5.596 1.635l.826-5.091C17.548 1.15 15.674.5 13.389.5 9.276.5 6.363 2.87 6.363 6.38c0 2.127 1.42 3.745 4.087 4.837 1.86.77 2.578 1.327 2.578 2.279 0 .942-.768 1.489-2.064 1.489-1.833 0-4.56-1.012-6.24-2.205l-.84 5.14C5.428 18.97 7.884 19.5 10.487 19.5c4.276 0 7.14-2.108 7.14-5.9 0-2.255-1.303-3.792-3.651-4.95z" fill="currentColor"></path></svg></span>
-      <span>Stripe</span>
+      <span className="brand-logo-icon"><svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"></path></svg></span>
+      <span>Claude Desktop</span>
     </div>
     <div className="brand-logo-item">
-      <span className="brand-logo-icon"><svg fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" fill="currentColor" r="3.5"></circle><circle cx="12" cy="3.5" fill="currentColor" opacity=".5" r="2.2"></circle><circle cx="12" cy="20.5" fill="currentColor" opacity=".5" r="2.2"></circle><circle cx="3.5" cy="12" fill="currentColor" opacity=".5" r="2.2"></circle><circle cx="20.5" cy="12" fill="currentColor" opacity=".5" r="2.2"></circle></svg></span>
-      <span>Twilio</span>
+      <span className="brand-logo-icon"><svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><circle cx="12" cy="6" r="2.3"></circle><circle cx="5.5" cy="17" r="2.3"></circle><circle cx="18.5" cy="17" r="2.3"></circle><path d="M10.6 7.9 6.9 15M13.4 7.9 17.1 15M7.8 17h8.4"></path></svg></span>
+      <span>CrewAI</span>
     </div>
     <div className="brand-logo-item">
-      <span className="brand-logo-icon"><svg fill="none" viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm0 2.18L19 8.3v3.7c0 4.83-3.13 9.37-7 10.5-3.87-1.13-7-5.67-7-10.5V8.3L12 4.18z" fill="currentColor"></path><path d="M12 6.5L7 9.2V12c0 3.17 2.13 6.17 5 7 2.87-.83 5-3.83 5-7V9.2L12 6.5z" fill="currentColor" opacity=".3"></path></svg></span>
-      <span>Cloudflare</span>
+      <span className="brand-logo-icon"><svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M9.5 13a4 4 0 0 0 5.66 0l2.5-2.5a4 4 0 0 0-5.66-5.66l-1.3 1.3"></path><path d="M14.5 11a4 4 0 0 0-5.66 0l-2.5 2.5a4 4 0 0 0 5.66 5.66l1.3-1.3"></path></svg></span>
+      <span>LangChain</span>
     </div>
     <div className="brand-logo-item">
-      <span className="brand-logo-icon"><svg fill="none" viewBox="0 0 24 24"><path d="M12 2L2 19.5h20L12 2z" fill="currentColor"></path></svg></span>
-      <span>Vercel</span>
-    </div>
-    <div className="brand-logo-item">
-      <span className="brand-logo-icon"><svg fill="none" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.33.26 2.6.74 3.76L12 22l9.26-6.24c.48-1.16.74-2.43.74-3.76 0-5.52-4.48-10-10-10z" fill="currentColor" opacity=".2"></path><path d="M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" fill="currentColor"></path></svg></span>
-      <span>Postgres</span>
-    </div>
-    <div className="brand-logo-item">
-      <span className="brand-logo-icon"><svg fill="none" viewBox="0 0 24 24"><path d="M12.65 10a4 4 0 0 1 3.46 2h4.39a8.5 8.5 0 1 0 0 4h-4.39a4 4 0 0 1-3.46 2 4 4 0 0 1 0-8z" fill="currentColor" opacity=".8"></path><circle cx="12" cy="14" fill="currentColor" r="1.5"></circle></svg></span>
-      <span>AWS KMS</span>
+      <span className="brand-logo-icon"><svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+      <span>Any MCP or A2A client</span>
     </div>
   </div>
 </div>
@@ -970,23 +1092,20 @@ function App() {
   <div className="shift-header-row">
     <div className="shift-header-left">
       <h2 className="display" style={{margin: "0", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>
-        AI delegation didn't get harder.<br />
+        AI delegation didn’t get harder.<br />
         <span className="accent-it">It got stuck.</span>
       </h2>
     </div>
     <div className="shift-header-right">
-      <p style={{margin: "0 0 16px", fontSize: "16.5px", lineHeight: "1.6", color: "var(--muted)"}}>
-        Teams are buried in API keys, tokens, and custom wrapper scripts, yet autonomous agents are still treated like dumb scripts, not entities.
-      </p>
-      <p style={{margin: "0", fontSize: "16.5px", lineHeight: "1.6", color: "var(--muted)"}}>
-        AgentTag creates a cryptographically secure identity for every agent, structure-routing every capability authorization so execution compounds safely.
+      <p style={{margin: "0", fontSize: "16.5px", lineHeight: "1.65", color: "var(--muted)"}}>
+        Wrapper scripts work in a sandbox, but collapse once agents touch money or production systems. AgentTag replaces keys with governed identities, ensuring execution compounds safely instead of drifting.
       </p>
     </div>
   </div>
 
   <div className="flows-container">
     {/* Card 1: Messy Flows */}
-    <div className="flow-card-mess glass">
+    <div className="flow-card-mess glass card-spotlight">
       <div className="flow-card-header">
         <span className="badge-mess">Your journeys are a <span className="highlight-red">mess</span></span>
       </div>
@@ -1088,7 +1207,7 @@ function App() {
     </div>
 
     {/* Card 2: Clean flows with AgentTag */}
-    <div className="flow-card-clean">
+    <div className="flow-card-clean card-spotlight">
       <div className="flow-card-header">
         <span className="badge-clean">Clean them up with <span className="highlight-white">AgentTag</span></span>
       </div>
@@ -1236,7 +1355,7 @@ function App() {
 <span className="eyebrow-num">02</span><span className="eyebrow-label">The platform</span>
 </div>
 <h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>One control plane to <span className="accent-it">govern every agent.</span></h2>
-<p style={{maxWidth: "560px", margin: "0 0 44px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>AgentTag sits between your agents and the world. Every action they take flows through one policy engine, one identity layer, and one tamper-evident ledger — regardless of framework, tool, or cloud.</p>
+<p style={{maxWidth: "560px", margin: "0 0 44px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>AgentTag sits between your agents and the world. Every action flows through one policy engine, one identity layer, and one tamper‑evident ledger — whatever framework, tool, or cloud you use.</p>
 <div className="gov-flow">
 {/* Your agents */}
 <div className="gov-col">
@@ -1262,15 +1381,15 @@ function App() {
 </div>
 <div className="gov-layer">
 <div className="gov-layer-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l7 3v6c0 4.5-3 8-7 9.5C8 19 5 15.5 5 11V5l7-3z"></path><path d="M9 11.5l2 2 4-4.5"></path></svg></div>
-<div><div className="gov-layer-t">Policy engine</div><div className="gov-layer-d">Evaluates every call against your mandates — allow, step-up, or deny.</div></div>
+<div><div className="gov-layer-t">Policy engine</div><div className="gov-layer-d">Evaluates every call against your mandates and returns allow, step‑up, or deny.</div></div>
 </div>
 <div className="gov-layer">
 <div className="gov-layer-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="M5.5 17a3.5 3.5 0 0 1 7 0M15 9h4M15 13h4"></path></svg></div>
-<div><div className="gov-layer-t">Identity &amp; mandates</div><div className="gov-layer-d">DID-signed passports and scoped, expiring capability tokens.</div></div>
+<div><div className="gov-layer-t">Identity &amp; mandates</div><div className="gov-layer-d">Issues DID‑signed passports and scoped, expiring capability tokens for each agent.</div></div>
 </div>
 <div className="gov-layer">
 <div className="gov-layer-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg></div>
-<div><div className="gov-layer-t">Audit ledger</div><div className="gov-layer-d">Every action hash-chained into a tamper-evident record.</div></div>
+<div><div className="gov-layer-t">Audit ledger</div><div className="gov-layer-d">Hash‑chains every action into a tamper‑evident record.</div></div>
 </div>
 </div>
 
@@ -1295,23 +1414,23 @@ function App() {
 <div className="gov-pillars">
 <div className="gov-pillar">
 <div className="gov-pillar-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"></path><path d="M9 11.5l2 2 4-4.5"></path></svg></div>
-<div className="gov-pillar-t">Policy as code</div>
-<div className="gov-pillar-d">Write a mandate once; it's enforced on every call, every client, automatically.</div>
+<div className="gov-pillar-t">Policy engine</div>
+<div className="gov-pillar-d">Evaluates every call against your mandates and returns allow, step‑up, or deny.</div>
 </div>
 <div className="gov-pillar">
 <div className="gov-pillar-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"></path><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"></path><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"></path><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"></path><path d="M8.65 22c.21-.66.45-1.32.57-2"></path><path d="M14 13.12c0 2.38 0 6.38-1 8.88"></path><path d="M2 16h.01"></path><path d="M21.8 16c.2-2 .131-5.354 0-6"></path><path d="M9 6.8a6 6 0 0 1 9 5.2v2"></path></svg></div>
-<div className="gov-pillar-t">Cryptographic identity</div>
-<div className="gov-pillar-d">DID-anchored passports bind each agent to your keys — no shared secrets.</div>
+<div className="gov-pillar-t">Identity &amp; mandates</div>
+<div className="gov-pillar-d">Issues DID‑signed passports and scoped, expiring capability tokens for each agent.</div>
 </div>
 <div className="gov-pillar">
 <div className="gov-pillar-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg></div>
-<div className="gov-pillar-t">Tamper-evident audit</div>
-<div className="gov-pillar-d">A hash-chained ledger gives you cryptographic proof of what every agent did.</div>
+<div className="gov-pillar-t">Audit ledger</div>
+<div className="gov-pillar-d">Hash‑chains every action into a tamper‑evident record.</div>
 </div>
 <div className="gov-pillar">
 <div className="gov-pillar-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5z"></path><path d="M3 7l9 5 9-5"></path><path d="M12 22V12"></path></svg></div>
 <div className="gov-pillar-t">Sandboxed compute</div>
-<div className="gov-pillar-d">Actions execute in isolated Firecracker microVMs with scoped leases.</div>
+<div className="gov-pillar-d">Runs actions in isolated environments with narrow access.</div>
 </div>
 </div>
 </section>
@@ -1321,7 +1440,7 @@ function App() {
 <span className="eyebrow-num">03</span><span className="eyebrow-label">The tool surface</span>
 </div>
 <h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>One MCP server. <span className="accent-it">Eight tools.</span></h2>
-<p style={{maxWidth: "540px", margin: "0 0 50px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Drop AgentTag into Claude or any MCP-compatible agent. The agent sees only these tools — behind each one sits the policy engine, the vault, and the audit ledger. It can't reach a capability except through a tool, and no tool acts without a verdict.</p>
+<p style={{maxWidth: "540px", margin: "0 0 50px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Drop AgentTag into Claude Desktop or any MCP‑compatible agent. The agent sees only governed tools; every call goes through policy, vault, and audit, and no capability runs without a verdict.</p>
 <div className="mcp-grid" style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", alignItems: "stretch"}}>
 {/* tool API */}
 <div className="panel-dark">
@@ -1341,16 +1460,19 @@ function App() {
 </div>
 </div>
 {/* quickstart */}
-<div className="card" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
+<div className="card card-spotlight" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
 <div style={{padding: "24px 28px 18px"}}>
-<span style={{fontWeight: "600", fontSize: "16px", color: "var(--ink)"}}>Connect in 30 seconds</span>
-<p style={{margin: "8px 0 0", fontSize: "14px", lineHeight: "1.6", color: "var(--muted)"}}>Add the server to your MCP client and the tools appear in the agent automatically.</p>
+<span style={{fontWeight: "600", fontSize: "16px", color: "var(--ink)"}}>Connect in 30 seconds.</span>
+<p style={{margin: "8px 0 0", fontSize: "14px", lineHeight: "1.6", color: "var(--muted)"}}>Add the server to your MCP client and the tools appear in the agent automatically. The agent can request actions, but nothing completes unless policy allows it.</p>
 </div>
 <div className="panel-dark" style={{borderRadius: "0", borderLeft: "0", borderRight: "0", flex: "1"}}>
 <MCPConsole />
 </div>
 </div>
 </div>
+<p style={{marginTop: "24px", textAlign: "center", fontSize: "14.5px", color: "var(--muted)"}}>
+  The agent can request actions, but nothing completes unless policy allows it.
+</p>
 </section>
 {/* ==================== 04 - POLICY GRID ==================== */}
 <section className="aeg-section aeg-wrap" id="policy">
@@ -1359,14 +1481,14 @@ function App() {
 <span className="eyebrow-num">04</span><span className="eyebrow-label">Platform governing</span>
 </div>
 <h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Everything you need to govern <span className="accent-it">AI action.</span></h2>
-<p style={{maxWidth: "580px", margin: "0 0 40px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Track, analyze, and authorize every request made by your autonomous agents across hosts, tools, and networks in real time.</p>
+<p style={{maxWidth: "580px", margin: "0 0 40px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Track, analyze, and authorize every request made by your autonomous agents across tools, hosts, and networks in real time.</p>
 </div>
 <div className="policy-grid">
 {/* Box 1 (col-8): Every node in any cloud */}
-<div className="card policy-card col-8">
+<div className="card policy-card col-8 card-spotlight">
 <div>
 <h3 className="policy-card-title">Every node <span>in any cloud</span></h3>
-<p className="policy-card-desc" style={{maxWidth: "480px"}}>Govern execution globally across private microVMs, secure credentials enclaves, and AWS KMS boundary environments.</p>
+<p className="policy-card-desc" style={{maxWidth: "480px"}}>Govern execution across private microVMs, secure credential enclaves, and KMS-backed environments.</p>
 </div>
 <div className="map-container">
 {/* Animated dotted world map with copper connection arcs */}
@@ -1385,10 +1507,10 @@ function App() {
 </div>
 </div>
 {/* Box 2 (col-4): Govern any agent */}
-<div className="card policy-card col-4">
+<div className="card policy-card col-4 card-spotlight">
 <div>
 <h3 className="policy-card-title">Govern <span>any agent</span></h3>
-<p className="policy-card-desc">Govern agent behavior regardless of client, tool surface, or orchestration model.</p>
+<p className="policy-card-desc">Apply the same rules across CrewAI, LangChain, Claude Desktop, and any MCP or A2A client.</p>
 </div>
 <div className="framework-list">
 <div className="framework-item">
@@ -1428,10 +1550,10 @@ function App() {
 </div>
 </div>
 {/* Box 3 (col-4): Connect your tools */}
-<div className="card policy-card col-4">
+<div className="card policy-card col-4 card-spotlight">
 <div>
 <h3 className="policy-card-title">Connect <span>your tools</span></h3>
-<p className="policy-card-desc">Bind third-party credentials securely behind sandboxed API surfaces.</p>
+<p className="policy-card-desc">Bind third-party credentials behind secure, sandboxed API surfaces.</p>
 </div>
       <div className="integration-list">
         <div className="integration-item">
@@ -1475,19 +1597,20 @@ function App() {
                 </div>
               </div>
               <span className={t.status === "connecting" ? "aeg-chip" : "aeg-chip aeg-chip--ok"} style={t.status === "connecting" ? {color: "var(--ink)", background: "var(--surface)", borderColor: "var(--line)"} : undefined}>{t.status === "connecting" ? "Connecting…" : "Connected"}</span>
+              <span className={t.status === "connecting" ? "aeg-chip" : "aeg-chip aeg-chip--ok"} style={t.status === "connecting" ? {color: "var(--ink)", background: "var(--surface)", borderColor: "var(--line)"} : undefined}>{t.status === "connecting" ? "Provisioning…" : "Protected"}</span>
             </div>
           );
         })}
         {extraTools.length < newToolPool.length && (
           <button className="integration-add" type="button" onClick={connectTool}>
             <svg fill="none" height="12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24" width="12"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
-            Connect new tool
+            Add new integration
           </button>
         )}
       </div>
     </div>
     {/* Box 4 (col-4): Biometric WebAuthn consent */}
-    <div className="card policy-card col-4">
+    <div className="card policy-card col-4 card-spotlight">
       <div>
         <h3 className="policy-card-title">Biometric <span>consent</span></h3>
         <p className="policy-card-desc">Fails closed on timeouts. Authorizations require on-device biometric check signed by your key.</p>
@@ -1529,10 +1652,10 @@ function App() {
       </div>
 </div>
 {/* Box 5 (col-4): Durable mandates ledger */}
-<div className="card policy-card col-4">
+<div className="card policy-card col-4 card-spotlight">
 <div>
 <h3 className="policy-card-title">Durable <span>mandates ledger</span></h3>
-<p className="policy-card-desc">Live-audited transaction evaluation and cryptographic policy assertion verification.</p>
+<p className="policy-card-desc">Every decision is logged and cryptographically verifiable.</p>
 </div>
 <div className="ledger-box">
 <div className="ledger-box-header">
@@ -1624,7 +1747,7 @@ function App() {
 <span className="eyebrow-num">05</span><span className="eyebrow-label">Audit ledger</span>
 </div>
 <h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Every action, signed <span className="accent-it">and chained.</span></h2>
-<p style={{maxWidth: "520px", margin: "0 0 50px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>A tamper-evident ledger records every decision — hash-chained, so history can't be quietly rewritten.</p>
+<p style={{maxWidth: "520px", margin: "0 0 50px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>A tamper‑evident ledger records every request, decision, and approval. Hash‑chaining makes quiet rewrites impossible.</p>
 <div className="panel-dark">
 <div className="z" style={{display: "flex", alignItems: "center", gap: "10px", padding: "15px 20px", borderBottom: "1px solid var(--line)"}}>
 <span className="win-dots" style={{display: "flex", gap: "6px"}}><span></span><span></span><span></span></span>
@@ -1643,8 +1766,8 @@ function App() {
 ))}
 </div>
 <div className="mono z" style={{display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid var(--line)", fontSize: "12px", color: "var(--muted)"}}>
-<span style={{color: "var(--ok)"}}>✓ chain verified</span>
-<span>{"{"}{ledgerCount}{"}"} entries · prev_hash linked</span>
+<span style={{color: "var(--ok)"}}>✓ Chain verified</span>
+<span>{ledgerCount} entries · prev_hash linked</span>
 </div>
 </div>
 </section>
@@ -1652,13 +1775,13 @@ function App() {
 <section className="aeg-section aeg-wrap">
 <div className="grid-2" style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px"}}>
 {/* Passport */}
-<div className="card" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
+<div className="card card-spotlight" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
 <div style={{padding: "30px 32px 26px"}}>
 <div style={{display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px"}}>
   <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="19" style={{ height: "19px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
 <span style={{fontWeight: "600", fontSize: "18px", color: "var(--ink)"}}>The Passport</span>
 </div>
-<p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>Every agent gets a cryptographic DID — an Ed25519 key that signs its requests, every audit entry, and is the subject of every mandate. Revoke it once and all authority starves.</p>
+<p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>Every agent gets its own cryptographic DID and signing key. Revoke it once and its authority stops.</p>
 </div>
 <div style={{marginTop: "auto", padding: "6px 32px 30px"}}>
 <div style={{background: "var(--paper-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--r-md)", padding: "6px 18px"}}>
@@ -1686,13 +1809,13 @@ function App() {
 </div>
 </div>
 {/* Mandate */}
-<div className="card" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
+<div className="card card-spotlight" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
 <div style={{padding: "30px 32px 26px"}}>
 <div style={{display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px"}}>
 <svg fill="none" height="19" viewBox="0 0 24 24" width="19"><path d="M5 3.5h11l3 3V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" fill="var(--crimson-tint)" stroke="var(--crimson)" strokeWidth="1.5"></path><path d="M7.5 12l1.8 1.8 3.7-3.8" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"></path></svg>
 <span style={{fontWeight: "600", fontSize: "18px", color: "var(--ink)"}}>The Mandate</span>
 </div>
-<p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>A human-signed, scoped, expiring grant of authority. Spend caps, allowed merchants, time bounds and the approval line — all expressed as fields. Tune autonomy by editing a mandate, never code.</p>
+<p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>A human‑signed mandate defines what an agent can do, what it can spend, when it must ask, and when access expires.</p>
 </div>
 <div style={{marginTop: "auto", padding: "6px 32px 30px"}}>
 <div style={{background: "var(--paper-2)", border: "1px solid var(--line-soft)", borderRadius: "var(--r-md)", padding: "6px 18px"}}>
@@ -1726,9 +1849,9 @@ function App() {
 <div className="eyebrow">
 <span className="eyebrow-num">06</span><span className="eyebrow-label">Why AgentTag</span>
 </div>
-<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>The only one built on <span className="accent-it">delegation.</span></h2>
-<p style={{maxWidth: "520px", margin: "0 0 44px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Password managers share your secrets. DIY scripts have no governance. AgentTag is identity-first, MCP-native, and accountable by construction.</p>
-<div className="card term-scroll scroll-hint" style={{padding: "0", overflowX: "auto", position: "relative"}}>
+<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Built for <span className="accent-it">delegation.</span></h2>
+<p style={{maxWidth: "520px", margin: "0 0 44px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Password managers share secrets. DIY scripts skip governance. AgentTag is identity-first, MCP-native, and accountable by construction.</p>
+<div className="card term-scroll scroll-hint card-spotlight" style={{padding: "0", overflowX: "auto", position: "relative"}}>
 <table className="cmp" style={{minWidth: "720px"}}>
 <colgroup>
 <col style={{width: "32%"}}/>
@@ -1811,48 +1934,43 @@ function App() {
 <div className="eyebrow">
 <span className="eyebrow-num">07</span><span className="eyebrow-label">Pricing</span>
 </div>
-<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Free while we're <span className="accent-it">in beta.</span></h2>
-<p style={{maxWidth: "560px", margin: "0 0 38px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Every primitive, the policy engine, and the hash-chained ledger — unlocked for everyone during the public beta. No card, no seats, no governance you have to buy back later.</p>
+<h2 className="display" style={{margin: "0 0 16px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Free while we’re <span className="accent-it">in beta.</span></h2>
+<p style={{maxWidth: "560px", margin: "0 0 38px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>All primitives, policy, and the hash‑chained ledger are unlocked for public beta. No card. No seats. No hidden catch.</p>
 <div className="price-grid" style={{display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: "18px", alignItems: "stretch"}}>
 {/* Beta access - primary */}
-<div className="card price-pop" style={{padding: "44px 36px 36px", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-lift)"}}>
+<div className="card price-pop card-spotlight" style={{padding: "44px 36px 36px", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-lift)"}}>
 <div className="price-top-bar"></div>
-<div className="price-badge">Recommended</div>
+<div className="price-badge">Public beta</div>
 <div style={{display: "flex", alignItems: "center", justifyContent: "space-between"}}>
-<span style={{fontWeight: "600", fontSize: "16px", color: "var(--ink)"}}>Public beta</span>
-<span className="mono" style={{display: "inline-flex", alignItems: "center", gap: "7px", fontSize: "10.5px", letterSpacing: "1px", textTransform: "uppercase", color: "var(--ink)", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "999px", padding: "4px 11px 4px 9px", fontWeight: "600"}}><span className="dot" style={{width: "7px", height: "7px", background: "var(--ink)", boxShadow: "none"}}></span>Live now</span>
+<span style={{fontWeight: "600", fontSize: "16px", color: "var(--ink)"}}>Live now</span>
 </div>
 <div style={{margin: "16px 0 4px", display: "flex", alignItems: "baseline", gap: "10px"}}>
 <span className="display" style={{fontSize: "56px", lineHeight: "1"}}>$0</span>
 <span style={{fontSize: "15px", color: "var(--faint)"}}>for everyone, right now</span>
 </div>
-<p style={{margin: "8px 0 24px", fontSize: "14px", lineHeight: "1.55", color: "var(--muted)"}}>Bring your first agent online and govern it end-to-end — full product, nothing held back.</p>
+<p style={{margin: "8px 0 24px", fontSize: "14px", lineHeight: "1.55", color: "var(--muted)"}}>Bring your first agent online and govern it end to end.</p>
 <div className="hairline" style={{marginBottom: "22px"}}></div>
 <ul className="beta-feats" style={{listStyle: "none", margin: "0 0 28px", padding: "0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 22px", flex: "1"}}>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>All <b style={{color: "var(--ink)", fontWeight: "600"}}>five</b> primitives, live</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>All five primitives, live</span></li>
 <li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Multiple agent passports</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Full policy engine &amp; step-up</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Full policy engine and step-up</span></li>
 <li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Passkey approvals on-device</span></li>
 <li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Hash-chained audit ledger</span></li>
 <li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Direct line to the founders</span></li>
 </ul>
-<a className="btn btn-crimson btn-cta-new" href="#cta" style={{justifyContent: "center"}}>Get beta access →</a>
-<p style={{margin: "14px 0 0", textAlign: "center", fontSize: "12.5px", color: "var(--faint)"}}>No credit card · cancel anytime · your data stays yours</p>
+<a className="btn btn-crimson btn-cta-new" href="#cta" style={{justifyContent: "center"}}>Get beta access</a>
+<p style={{margin: "14px 0 0", textAlign: "center", fontSize: "12.5px", color: "var(--faint)"}}>No credit card. Cancel anytime. Your data stays yours.</p>
 </div>
 {/* What happens at GA */}
-<div className="card" style={{padding: "36px", display: "flex", flexDirection: "column", background: "linear-gradient(180deg, var(--surface), var(--paper-2))"}}>
-<div style={{fontWeight: "600", fontSize: "16px", color: "var(--ink)"}}>After beta</div>
-<div style={{margin: "16px 0 4px", display: "flex", alignItems: "baseline", gap: "9px"}}>
-<span className="display" style={{fontSize: "40px", lineHeight: "1"}}>Fair</span>
-<span style={{fontSize: "14px", color: "var(--faint)"}}>usage-based pricing</span>
-</div>
-<p style={{margin: "8px 0 24px", fontSize: "14px", lineHeight: "1.55", color: "var(--muted)"}}>When we reach general availability, you pay for autonomy — not seats. Here's our promise to beta users.</p>
+<div className="card card-spotlight" style={{padding: "36px", display: "flex", flexDirection: "column", background: "linear-gradient(180deg, var(--surface), var(--paper-2))"}}>
+<div style={{fontWeight: "600", fontSize: "16px", color: "var(--ink)"}}>Fair usage-based pricing</div>
+<p style={{margin: "8px 0 24px", fontSize: "14px", lineHeight: "1.55", color: "var(--muted)"}}>When we reach general availability, you’ll pay for autonomy, not seats.</p>
 <div className="hairline" style={{marginBottom: "22px"}}></div>
 <ul style={{listStyle: "none", margin: "0 0 28px", padding: "0", display: "flex", flexDirection: "column", gap: "14px", flex: "1"}}>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span><b style={{color: "var(--ink)", fontWeight: "600"}}>30 days'</b> notice before any plan starts</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span><b>30 days’</b> notice before any new plan starts</span></li>
 <li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>A generous free tier that stays free</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Founding-user pricing, locked in</span></li>
-<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Enterprise SSO, SLA &amp; on-prem when you need it</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Founding-user pricing locked in</span></li>
+<li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Enterprise SSO, SLA, and on-prem support when needed</span></li>
 </ul>
 <a className="btn btn-ghost" href="#cta" style={{justifyContent: "center"}}>Talk to the team</a>
 </div>
@@ -1917,13 +2035,13 @@ function App() {
         Give your agent <span className="cta-dashed-highlight">a passport.</span>
 </h2>
 <p className="cta-desc">
-        AgentTag is in open public beta — free while we build. Drop your email and we'll send your access today.
+        Bring your first agent online with governed identity, signed permissions, and a verifiable audit trail.
       </p>
 <form className="cta-form-new" onSubmit={onSubmit}>
 <input aria-label="Email address" className="cta-input-new" id="cta-email" name="email" placeholder="you@company.com" required type="email"/>
-<button className="btn btn-crimson btn-cta-new" type="submit">Get beta access →</button>
+<button className="btn btn-crimson btn-cta-new" type="submit">Get beta access</button>
 </form>
-<p className="cta-footer-note">The human is always the accountable principal. AgentTag makes the line provable.</p>
+<p className="cta-footer-note">The human stays accountable. The agent gets its own identity.</p>
 </div>
 </section>
 {/* ==================== FOOTER ==================== */}
@@ -1973,9 +2091,9 @@ function App() {
 </div>
 <div>
 <div className="footer-col-title">Resources</div>
-<a className="footer-link footer-link-soon" role="link" aria-disabled="true">Case Studies<span className="footer-soon">Soon</span></a>
-<a className="footer-link footer-link-soon" role="link" aria-disabled="true">Blog &amp; Insights<span className="footer-soon">Soon</span></a>
-<a className="footer-link footer-link-soon" role="link" aria-disabled="true">Research<span className="footer-soon">Soon</span></a>
+<a className="footer-link" href="#/case-studies">Case Studies</a>
+<a className="footer-link" href="#/blog">Blog & Insights</a>
+<a className="footer-link" href="#/research">Research</a>
 <a className="footer-link" href="#faq">FAQ</a>
 <a className="footer-link" href="https://status.agenttag.ai" target="_blank" rel="noopener noreferrer">Status</a>
 </div>
@@ -2002,9 +2120,9 @@ function App() {
 <div className="footer-bottom-row">
 <div className="footer-copyright">© Copyright 2026 AgentTag.ai</div>
 <div className="footer-legal-links">
-<a className="footer-legal-link footer-link-soon" role="link" aria-disabled="true">Terms of Service<span className="footer-soon">Soon</span></a>
-<a className="footer-legal-link footer-link-soon" role="link" aria-disabled="true">Privacy Policy<span className="footer-soon">Soon</span></a>
-<a className="footer-legal-link footer-link-soon" role="link" aria-disabled="true">Data Platform TOS<span className="footer-soon">Soon</span></a>
+<a className="footer-legal-link" href="#/terms">Terms of Service</a>
+<a className="footer-legal-link" href="#/privacy">Privacy Policy</a>
+<a className="footer-legal-link" href="#/data-tos">Data Platform TOS</a>
 </div>
 </div>
 {/* Watermark background text */}
