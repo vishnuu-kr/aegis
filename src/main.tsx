@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import Router from './Router'
 
 declare global {
@@ -18,7 +19,9 @@ if (!root) {
 
 root.render(
   <StrictMode>
-    <Router />
+    <TooltipProvider delayDuration={120}>
+      <Router />
+    </TooltipProvider>
   </StrictMode>,
 )
 

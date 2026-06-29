@@ -172,7 +172,7 @@ test.describe('Setup Wizard E2E Tests', () => {
     await expect(page.locator('.ad-wiz')).not.toBeVisible();
     
     // Verify redirection to Overview page / Dashboard
-    const topBarTitle = page.locator('.ad-topbar h1');
+    const topBarTitle = page.locator('header');
     await expect(topBarTitle).toContainText('Dashboard');
   });
 });

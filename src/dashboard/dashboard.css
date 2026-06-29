@@ -4,39 +4,38 @@
    matches the marketing site and follows its light/dark theme.
    ============================================================ */
 .aeg-dash {
-  /* Map dashboard vars onto the global landing tokens (theme-aware). */
-  --d-bg: var(--paper);
-  --d-bg-2: var(--paper-2);
-  --d-panel: var(--surface-2);
-  --d-panel-2: var(--paper-2);
-  --d-line: var(--surface);
-  --d-line-2: color-mix(in srgb, var(--ink) 8%, transparent);
-  --d-ink: var(--ink);
-  --d-muted: var(--muted);
-  --d-faint: var(--faint);
-  --d-crimson: var(--crimson);
-  --d-crimson-2: var(--crimson-deep);
+  /* Map the bespoke dashboard vars onto the shadcn neutral tokens
+     (defined in index.css, scoped to .aeg-dash, theme-aware). This keeps
+     any remaining .ad-* components visually consistent with the @efferd UI. */
+  --d-bg: var(--background);
+  --d-bg-2: var(--muted);
+  --d-panel: var(--card);
+  --d-panel-2: var(--card);
+  --d-line: var(--border);
+  --d-line-2: color-mix(in srgb, var(--foreground) 12%, transparent);
+  --d-ink: var(--foreground);
+  --d-muted: var(--muted-foreground);
+  --d-faint: color-mix(in srgb, var(--muted-foreground) 78%, transparent);
+  --d-crimson: #e11d48; /* rose-600 - brand crimson */
+  --d-crimson-2: #be123c; /* rose-700 */
   --d-ok: var(--ok);
   --d-warn: var(--warn);
   --d-bad: var(--bad);
   --d-info: var(--info);
   /* neutral overlays that work in both themes */
-  --d-hover: color-mix(in srgb, var(--ink) 5%, transparent);
-  --d-hover-2: color-mix(in srgb, var(--ink) 9%, transparent);
-  --d-soft: color-mix(in srgb, var(--ink) 6%, transparent);
-  --d-track: color-mix(in srgb, var(--ink) 10%, transparent);
+  --d-hover: color-mix(in srgb, var(--foreground) 5%, transparent);
+  --d-hover-2: color-mix(in srgb, var(--foreground) 9%, transparent);
+  --d-soft: color-mix(in srgb, var(--foreground) 6%, transparent);
+  --d-track: color-mix(in srgb, var(--foreground) 10%, transparent);
   --d-r: 28px; /* Concentric outer card radius: 8px inner + 20px padding = 28px */
-  --d-r-sm: 8px; /* Concentric inner row radius */
+  --d-r-sm: 10px;
+  --d-r-lg: 22px;
   --d-ease: var(--ease-out, cubic-bezier(.2, 0, 0, 1));
 
   position: fixed;
   inset: 0;
   display: flex;
-  background:
-    radial-gradient(1000px 600px at 0% 0%, rgba(var(--accent-rgb), 0.022), transparent 75%),
-    radial-gradient(900px 500px at 100% 100%, rgba(var(--accent-rgb), 0.015), transparent 75%),
-    radial-gradient(700px 420px at 85% 15%, var(--crimson-tint), transparent 60%),
-    color-mix(in srgb, var(--d-bg) 92%, transparent);
+  background-color: var(--d-bg);
   color: var(--d-ink);
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px;
@@ -45,11 +44,20 @@
   z-index: 1;
   overflow: hidden;
 }
+/* Smooth theme cross-fade transition */
+.aeg-dash,
+.aeg-dash *,
+.ad-side,
+.ad-side * {
+  transition: background-color 0.3s cubic-bezier(0.2, 0, 0, 1), 
+              border-color 0.3s cubic-bezier(0.2, 0, 0, 1), 
+              color 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
 .aeg-dash *, .aeg-dash *::before, .aeg-dash *::after { box-sizing: border-box; }
 .aeg-dash .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .aeg-dash .tnum { font-variant-numeric: tabular-nums; }
 .aeg-dash .display { font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
-.aeg-dash .ad-metric-val { font-family: 'Bricolage Grotesque', 'Inter', sans-serif; color: var(--d-ink); letter-spacing: -0.03em; line-height: 1; }
+.aeg-dash .ad-metric-val { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--d-ink); letter-spacing: -0.02em; line-height: 1; font-weight: 700; }
 
 /* Polish adjustments */
 .aeg-dash h1, .aeg-dash h2, .aeg-dash h3, .aeg-dash .ad-section-title {
@@ -72,120 +80,63 @@
   outline: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* ---------- Sidebar ---------- */
-.aeg-dash .ad-side {
-  width: 248px;
-  flex: none;
-  background: color-mix(in srgb, var(--d-bg-2) 65%, transparent);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  border-right: 1px solid color-mix(in srgb, var(--d-ink) 8%, transparent);
-  display: flex;
-  flex-direction: column;
-  padding: 18px 14px;
-}
-.aeg-dash .ad-brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 2px; }
+/* ---------- Brand mark (used by the setup Wizard rail) ---------- */
 .aeg-dash .ad-brand-mark {
-  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  width: 28px; height: 28px; border-radius: 7px; flex: none;
   display: grid; place-items: center;
-  background: linear-gradient(150deg, var(--crimson-br), var(--crimson-deep));
-  color: #fff; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--crimson) 60%, transparent);
-}
-.aeg-dash .ad-brand-name { font-weight: 700; font-size: 17px; letter-spacing: -.02em; font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
-.aeg-dash .ad-brand-sub { font-size: 12px; color: var(--d-faint); margin: 2px 0 18px 8px; }
-
-.aeg-dash .ad-nav { display: flex; flex-direction: column; gap: 2px; }
-.aeg-dash .ad-nav-label {
-  font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--d-faint); padding: 16px 10px 6px; font-weight: 600;
-}
-.aeg-dash .ad-nav-item {
-  display: flex; align-items: center; gap: 11px;
-  padding: 10px 10px; border-radius: var(--d-r-sm);
-  color: var(--d-muted); font-weight: 500; font-size: 13.5px;
-  background: transparent; border: 0; width: 100%; text-align: left; cursor: pointer;
-  position: relative;
-  transition: color .18s var(--d-ease), background-color .18s var(--d-ease), transform .15s ease-out;
-}
-.aeg-dash .ad-nav-item:hover { color: var(--d-ink); background: var(--d-hover); }
-.aeg-dash .ad-nav-item:active { transform: scale(0.96); }
-.aeg-dash .ad-nav-item.is-active { color: var(--crimson); font-weight: 600; }
-.aeg-dash .ad-nav-item svg { width: 17px; height: 17px; flex: none; }
-.aeg-dash .ad-nav-badge {
-  margin-left: auto; font-size: 11px; font-weight: 700; min-width: 18px; height: 18px;
-  padding: 0 5px; border-radius: 9px; display: grid; place-items: center;
-  background: var(--d-crimson); color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
-.aeg-dash .ad-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
-.aeg-dash .ad-theme-toggle {
-  display: flex; align-items: center; gap: 9px; width: 100%;
-  padding: 10px 10px; border-radius: var(--d-r-sm); border: 1px solid var(--d-line);
-  background: transparent; color: var(--d-muted); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
-  transition: color .16s var(--d-ease), background-color .16s var(--d-ease), border-color .16s var(--d-ease), transform .15s ease-out;
-}
-.aeg-dash .ad-theme-toggle:hover { color: var(--d-ink); background: var(--d-hover); border-color: var(--d-line-2); }
-.aeg-dash .ad-theme-toggle:active { transform: scale(0.96); }
-.aeg-dash .ad-theme-toggle svg { width: 16px; height: 16px; }
-
-.aeg-dash .ad-agentcard {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px; border-radius: 18px; border: 1px solid var(--d-line);
-  background: var(--d-panel); box-shadow: var(--shadow-card);
-}
-.aeg-dash .ad-agentcard .av {
-  width: 30px; height: 30px; border-radius: 8px; flex: none; display: grid; place-items: center;
-  background: var(--crimson-tint); border: 1px solid color-mix(in srgb, var(--crimson) 22%, transparent); color: var(--crimson);
-}
-.aeg-dash .ad-agentcard b { font-size: 12.5px; font-weight: 600; display: block; }
-.aeg-dash .ad-agentcard span { font-size: 11px; color: var(--d-faint); }
-
-/* ---------- Main ---------- */
-.aeg-dash .ad-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* ---------- Page header (PageHeader) ---------- */
 .aeg-dash .ad-topbar {
   display: flex; align-items: center; gap: 16px;
-  padding: 20px 28px;
-  background: color-mix(in srgb, var(--d-bg) 60%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid color-mix(in srgb, var(--d-ink) 8%, transparent);
+  padding: 14px 24px;
+  background: transparent;
+  border-bottom: 1px solid var(--d-line);
   flex: none;
+  position: relative;
 }
-.aeg-dash .ad-topbar h1 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 0; font-family: 'Bricolage Grotesque', 'Inter', sans-serif; }
-.aeg-dash .ad-topbar p { margin: 4px 0 0; font-size: 13.5px; color: var(--d-faint); }
-.aeg-dash .ad-topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.aeg-dash .ad-topbar h1 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; margin: 0; font-family: 'Inter', sans-serif; color: var(--d-ink); }
+.aeg-dash .ad-topbar p { margin: 2px 0 0; font-size: 12.5px; color: var(--d-faint); }
+.aeg-dash .ad-topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .aeg-dash .ad-scroll {
-  flex: 1; overflow-y: auto; padding: 28px;
-  background-image: radial-gradient(color-mix(in srgb, var(--d-ink) 5%, transparent) 1px, transparent 1px);
-  background-size: 20px 20px;
+  flex: 1; overflow-y: auto; padding: 22px 24px;
 }
-.aeg-dash .ad-scroll::-webkit-scrollbar { width: 10px; }
+.aeg-dash .ad-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
 .aeg-dash .ad-scroll::-webkit-scrollbar-thumb { background: var(--d-track); border-radius: 8px; border: 3px solid var(--d-bg); }
+.aeg-dash .ad-scroll::-webkit-scrollbar-track { background: transparent; }
 
-/* ---------- Cards & surfaces ---------- */
+/* ---------- Cards & surfaces ----------
+   Premium layered look shared by the @efferd cards ([data-slot="card"])
+   and the bespoke .ad-card, echoing the landing's soft-shadow surfaces:
+   a soft shadow-as-border + ambient depth + a 1px top highlight, instead
+   of a flat hairline. Rounder corners + a gentle lift on hover. */
+.aeg-dash [data-slot="card"],
 .aeg-dash .ad-card {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--d-panel) 86%, transparent), color-mix(in srgb, var(--d-panel) 78%, transparent));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid color-mix(in srgb, var(--d-ink) 7%, transparent);
-  border-radius: var(--d-r);
-  box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.02),
-    0 8px 24px -6px rgba(9, 9, 11, 0.04),
-    0px 1px 0px 0px rgba(255, 255, 255, 0.5) inset;
-  transition: border-color .28s var(--d-ease), transform .28s var(--d-ease), box-shadow .28s var(--d-ease), background-color .28s var(--d-ease);
+  border: 0 !important;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 1px 2px -1px rgba(0, 0, 0, 0.05),
+    0 6px 16px -10px rgba(0, 0, 0, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  transition: box-shadow .35s var(--d-ease), transform .35s var(--d-ease);
 }
-.aeg-dash .ad-card.pad { padding: 22px; }
+.aeg-dash .ad-card.pad { padding: 20px; }
+/* Footer divider: blend into the surface instead of a grey sub-box. */
+.aeg-dash [data-slot="card-footer"] {
+  background: transparent;
+  border-top-color: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+.aeg-dash [data-slot="card"]:hover,
 .aeg-dash .ad-card:hover {
-  transform: translateY(-4px);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--d-panel) 94%, transparent), color-mix(in srgb, var(--d-panel) 88%, transparent));
-  border-color: color-mix(in srgb, var(--d-ink) 16%, transparent);
-  box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.02),
-    0 20px 40px -12px rgba(9, 9, 11, 0.08),
-    0px 1px 0px 0px rgba(255, 255, 255, 0.8) inset,
-    0px 0px 0px 1px color-mix(in srgb, var(--d-ink) 12%, transparent),
-    0px 1px 0px 0px rgba(255, 255, 255, 0.12) inset;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 9%, transparent),
+    0 2px 6px -2px rgba(0, 0, 0, 0.07),
+    0 18px 40px -20px rgba(0, 0, 0, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .aeg-dash .ad-ledger-row {
@@ -201,15 +152,16 @@
 .aeg-dash .ad-ledger-row:hover {
   background: var(--d-hover);
 }
-.aeg-dash .ad-grid { display: grid; gap: 16px; }
-.aeg-dash .ad-stat-label { font-size: 12.5px; color: var(--d-muted); display: flex; align-items: center; gap: 8px; }
+.aeg-dash .ad-grid { display: grid; gap: 14px; }
+.aeg-dash .ad-stat-label { font-size: 12px; color: var(--d-muted); font-weight: 500; display: flex; align-items: center; gap: 7px; letter-spacing: .005em; }
 .aeg-dash .ad-stat-value {
-  font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin: 10px 0 4px;
-  font-family: 'Inter', system-ui, sans-serif; /* fallback to Inter for clean tabular alignment */
+  font-size: 24px; font-weight: 600; letter-spacing: -.025em; margin: 6px 0 2px;
+  font-family: 'Inter', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+  color: var(--d-ink);
 }
-.aeg-dash .ad-stat-delta { font-size: 12px; font-weight: 600; }
-.aeg-dash .ad-stat-ico { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--crimson-tint); color: var(--d-crimson); }
+.aeg-dash .ad-stat-delta { font-size: 11.5px; font-weight: 500; }
+.aeg-dash .ad-stat-ico { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--crimson-tint); color: var(--d-crimson); }
 
 .aeg-dash .ad-section-title { font-size: 14px; font-weight: 650; margin: 0 0 2px; }
 .aeg-dash .ad-section-sub { font-size: 12.5px; color: var(--d-faint); margin: 0 0 16px; }
@@ -224,8 +176,8 @@
 .aeg-dash .ad-btn svg { width: 15px; height: 15px; }
 .aeg-dash .ad-btn:active { transform: scale(.96); }
 .aeg-dash .ad-btn:disabled { opacity: .45; cursor: not-allowed; }
-.aeg-dash .ad-btn-primary { background: linear-gradient(135deg, var(--crimson-deep), var(--crimson)); color: #fff; box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--crimson) 70%, transparent); }
-.aeg-dash .ad-btn-primary:hover { filter: brightness(1.07); }
+.aeg-dash .ad-btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.aeg-dash .ad-btn-primary:hover { opacity: .9; }
 .aeg-dash .ad-btn-ghost { background: transparent; border-color: var(--d-line-2); color: var(--d-ink); }
 .aeg-dash .ad-btn-ghost:hover { background: var(--d-hover); border-color: color-mix(in srgb, var(--ink) 24%, transparent); }
 .aeg-dash .ad-btn-subtle { background: var(--d-soft); color: var(--d-ink); }
@@ -250,8 +202,8 @@
 /* ---------- Chips ---------- */
 .aeg-dash .ad-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600; letter-spacing: .01em;
-  padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+  padding: 4px 10px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
 }
 .aeg-dash .ad-chip .dot {
   width: 6px; height: 6px; border-radius: 50%; background: currentColor;
@@ -268,49 +220,65 @@
   70% { transform: scale(1.05); box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 0%, transparent); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 0%, transparent); }
 }
-.aeg-dash .ad-chip.ok { color: var(--d-ok); background: color-mix(in srgb, var(--ok) 13%, transparent); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
-.aeg-dash .ad-chip.warn { color: var(--d-warn); background: color-mix(in srgb, var(--warn) 14%, transparent); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
-.aeg-dash .ad-chip.bad { color: var(--d-bad); background: color-mix(in srgb, var(--bad) 13%, transparent); border-color: color-mix(in srgb, var(--bad) 28%, transparent); }
-.aeg-dash .ad-chip.info { color: var(--d-info); background: color-mix(in srgb, var(--info) 13%, transparent); border-color: color-mix(in srgb, var(--info) 28%, transparent); }
+.aeg-dash .ad-chip.ok { color: var(--d-ok); background: color-mix(in srgb, var(--ok) 8%, transparent); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
+.aeg-dash .ad-chip.warn { color: var(--d-warn); background: color-mix(in srgb, var(--warn) 9%, transparent); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.aeg-dash .ad-chip.bad { color: var(--d-bad); background: color-mix(in srgb, var(--bad) 8%, transparent); border-color: color-mix(in srgb, var(--bad) 28%, transparent); }
+.aeg-dash .ad-chip.info { color: var(--d-info); background: color-mix(in srgb, var(--info) 8%, transparent); border-color: color-mix(in srgb, var(--info) 28%, transparent); }
 .aeg-dash .ad-chip.muted { color: var(--d-faint); background: var(--d-soft); border-color: var(--d-line); }
 
 /* ---------- Toggle ---------- */
 .aeg-dash .ad-toggle {
-  width: 38px; height: 22px; border-radius: 999px; border: 0; cursor: pointer; padding: 0; flex: none;
-  background: color-mix(in srgb, var(--ink) 18%, transparent); position: relative; transition: background-color .2s var(--d-ease);
+  width: 36px !important;
+  height: 20px !important;
+  border-radius: 999px !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+  background: rgba(120, 120, 128, 0.24) !important;
+  position: relative;
+  transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 .aeg-dash .ad-toggle::after {
-  content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
-  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .2s var(--d-ease);
+  content: '' !important;
+  position: absolute !important;
+  top: 2px !important;
+  left: 2px !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1) !important;
 }
-.aeg-dash .ad-toggle.on { background: var(--d-crimson); }
-.aeg-dash .ad-toggle.on::after { transform: translateX(16px); }
+.aeg-dash .ad-toggle.on {
+  background: #10b981 !important; /* emerald-500: clearly "on" / active */
+}
+.aeg-dash .ad-toggle.on::after {
+  transform: translateX(16px) !important;
+}
 
 /* ---------- Rows / lists ---------- */
 .aeg-dash .ad-row {
-  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
-  border: none; border-radius: var(--d-r-sm); background: var(--d-panel);
-  box-shadow: 
-    0px 0px 0px 1px color-mix(in srgb, var(--d-ink) 5%, transparent),
-    0px 1px 3px -1px color-mix(in srgb, var(--d-ink) 8%, transparent),
-    0px 8px 16px -4px color-mix(in srgb, var(--d-ink) 4%, transparent),
-    0px 1px 0px 0px rgba(255, 255, 255, 0.1) inset;
-  transition: border-color .16s var(--d-ease), background-color .16s var(--d-ease);
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border-radius: var(--d-r-sm); background: color-mix(in srgb, var(--d-panel) 40%, transparent);
+  border: 1px solid var(--d-line);
+  transition: border-color .15s var(--d-ease), background-color .15s var(--d-ease);
 }
 .aeg-dash .ad-row:hover {
-  box-shadow: 
-    0px 0px 0px 1px color-mix(in srgb, var(--d-ink) 12%, transparent),
-    0px 1px 4px -1px color-mix(in srgb, var(--d-ink) 12%, transparent),
-    0px 12px 24px -6px color-mix(in srgb, var(--d-ink) 8%, transparent),
-    0px 1px 0px 0px rgba(255, 255, 255, 0.1) inset;
+  border-color: color-mix(in srgb, var(--d-ink) 14%, transparent);
+  background: color-mix(in srgb, var(--d-panel) 70%, transparent);
 }
 .aeg-dash .ad-row-ico {
-  width: 38px; height: 38px; border-radius: 6px; flex: none; display: grid; place-items: center;
-  background: var(--d-panel-2); border: 1px solid var(--d-line); color: var(--d-muted);
+  width: 32px; height: 32px; border-radius: 7px; flex: none; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--d-panel) 60%, transparent); border: 1px solid var(--d-line); color: var(--d-muted);
 }
-.aeg-dash .ad-row-name { font-weight: 600; font-size: 13.5px; }
+.aeg-dash .ad-row-name { font-weight: 500; font-size: 13.5px; color: var(--d-ink); }
 .aeg-dash .ad-row-desc { font-size: 12px; color: var(--d-faint); margin-top: 2px; }
-.aeg-dash .ad-stack { display: flex; flex-direction: column; gap: 10px; }
+.aeg-dash .ad-stack { display: flex; flex-direction: column; gap: 8px; }
 
 /* ---------- Table ---------- */
 .aeg-dash .ad-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -329,7 +297,7 @@
 
 /* ---------- Empty state ---------- */
 .aeg-dash .ad-empty { display: grid; place-items: center; text-align: center; padding: 56px 20px; gap: 8px; }
-.aeg-dash .ad-empty .ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--crimson-tint); color: var(--d-crimson); }
+.aeg-dash .ad-empty .ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--muted); color: var(--muted-foreground); }
 .aeg-dash .ad-empty h3 { margin: 6px 0 0; font-size: 15px; font-weight: 650; }
 .aeg-dash .ad-empty p { margin: 0; font-size: 13px; color: var(--d-faint); max-width: 320px; }
 
@@ -750,7 +718,10 @@
 .aeg-dash .ad-inbox-list {
   border-right: 1px solid var(--d-line);
   overflow-y: auto;
-  padding: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .aeg-dash .ad-inbox-list::-webkit-scrollbar { width: 6px; }
 .aeg-dash .ad-inbox-list::-webkit-scrollbar-thumb { background: var(--d-track); border-radius: 6px; }
@@ -758,19 +729,44 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--d-line);
+  padding: 16px;
+  background: var(--d-panel);
+  border: 1px solid var(--d-line);
+  border-radius: var(--d-r-sm);
   cursor: pointer;
-  background: transparent;
-  border-left: 3px solid transparent;
-  transition: background-color 0.16s var(--d-ease), border-left-color 0.16s var(--d-ease);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s var(--d-ease), background-color 0.2s var(--d-ease), transform 0.15s var(--d-ease), box-shadow 0.2s var(--d-ease);
 }
 .aeg-dash .ad-inbox-item:hover {
-  background: var(--d-hover);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--d-panel) 95%, transparent), color-mix(in srgb, var(--d-panel) 90%, transparent));
+  border-color: var(--d-line-2);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 4px 12px -4px rgba(0, 0, 0, 0.05);
 }
 .aeg-dash .ad-inbox-item.selected {
-  background: var(--d-soft);
-  border-left-color: var(--d-crimson);
+  background: color-mix(in srgb, var(--d-crimson) 4%, var(--d-panel));
+  border-color: var(--d-crimson);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 4px 12px -4px rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] .aeg-dash .ad-inbox-item {
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+[data-theme="dark"] .aeg-dash .ad-inbox-item:hover {
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 12px -4px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .aeg-dash .ad-inbox-item.selected {
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 12px -4px rgba(0, 0, 0, 0.5);
 }
 .aeg-dash .ad-inbox-detail {
   padding: 24px;
@@ -819,13 +815,13 @@
 }
 .aeg-dash .ad-countdown-ring .track {
   fill: none;
-  stroke: var(--d-track);
-  stroke-width: 3;
+  stroke: rgba(255, 255, 255, 0.05) !important;
+  stroke-width: 1.5 !important;
 }
 .aeg-dash .ad-countdown-ring .progress {
   fill: none;
-  stroke: var(--d-crimson);
-  stroke-width: 3;
+  stroke: var(--d-crimson) !important;
+  stroke-width: 1.5 !important;
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear;
 }
@@ -834,8 +830,8 @@
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 9px !important;
+  font-weight: 500 !important;
   color: var(--d-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -922,14 +918,190 @@
   }
 }
 
-/* Dark mode overrides for card glassmorphism shadows */
+/* Dark mode: deeper ambient shadow + faint top highlight for the same
+   premium surface, on both card systems. */
+[data-theme="dark"] .aeg-dash [data-slot="card"],
 [data-theme="dark"] .aeg-dash .ad-card {
-  box-shadow: 
-    0px 1px 0px 0px rgba(255, 255, 255, 0.05) inset,
-    0px 12px 32px -8px rgba(0, 0, 0, 0.45) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 10px 28px -14px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
 }
+[data-theme="dark"] .aeg-dash [data-slot="card"]:hover,
 [data-theme="dark"] .aeg-dash .ad-card:hover {
-  box-shadow: 
-    0px 1px 0px 0px rgba(255, 255, 255, 0.1) inset,
-    0px 24px 48px -12px rgba(0, 0, 0, 0.65) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 24px 48px -18px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
 }
+
+@keyframes chart-pulse {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.7; }
+}
+
+/* ============ PREMIUM SIDEBAR DESIGN (Untitled UI Inspired) ============ */
+
+/* Light mode styles */
+.aeg-dash .ad-side {
+  background-color: #f9fafb !important;
+  border-right: 1px solid rgba(9, 9, 11, 0.06) !important;
+}
+
+.aeg-dash .ad-nav-item {
+  color: #475569 !important;
+  background-color: transparent !important;
+  font-weight: 500;
+  border: 1px solid transparent !important;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aeg-dash .ad-nav-item svg {
+  color: #64748b !important;
+  transition: color 0.15s ease;
+}
+
+.aeg-dash .ad-nav-item:hover {
+  color: #0f172a !important;
+  background-color: rgba(9, 9, 11, 0.04) !important;
+}
+
+.aeg-dash .ad-nav-item:hover svg {
+  color: #334155 !important;
+}
+
+.aeg-dash .ad-nav-item[data-active="true"] {
+  color: #0f172a !important;
+  background-color: rgba(9, 9, 11, 0.06) !important;
+  font-weight: 600;
+}
+
+.aeg-dash .ad-nav-item[data-active="true"] svg {
+  color: #0f172a !important;
+}
+
+.aeg-dash .ad-connect-btn {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(9, 9, 11, 0.1) !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aeg-dash .ad-connect-btn:hover {
+  background-color: #f3f4f6 !important;
+  border-color: rgba(9, 9, 11, 0.15) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.aeg-dash .ad-search-group {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(9, 9, 11, 0.08) !important;
+}
+
+.aeg-dash .ad-agent-card {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(9, 9, 11, 0.06) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aeg-dash .ad-agent-card:hover {
+  background-color: #f9fafb !important;
+  border-color: rgba(9, 9, 11, 0.1) !important;
+}
+
+/* Dark mode styles */
+[data-theme="dark"] .aeg-dash .ad-side {
+  background-color: #09090b !important; /* Deeper canvas black */
+  border-right: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-nav-item {
+  color: #94a3b8 !important;
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-nav-item svg {
+  color: #64748b !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-nav-item:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-nav-item:hover svg {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-nav-item[data-active="true"] {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-nav-item[data-active="true"] svg {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-connect-btn {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #09090b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-connect-btn:hover {
+  background-color: #f4f4f5 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #09090b !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-search-group {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-agent-card {
+  background-color: rgba(255, 255, 255, 0.01) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .aeg-dash .ad-agent-card:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Sidebar Group Label Polish */
+.aeg-dash [data-sidebar="group-label"] {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: #64748b !important;
+  margin-top: 12px !important;
+  margin-bottom: 4px !important;
+}
+[data-theme="dark"] .aeg-dash [data-sidebar="group-label"] {
+  color: #4b5563 !important;
+}
+
+/* Table Row Border Opacity Polish */
+.aeg-dash tr,
+.aeg-dash th,
+.aeg-dash td {
+  border-color: rgba(9, 9, 11, 0.05) !important;
+}
+
+[data-theme="dark"] .aeg-dash tr,
+[data-theme="dark"] .aeg-dash th,
+[data-theme="dark"] .aeg-dash td {
+  border-color: rgba(255, 255, 255, 0.035) !important;
+}
+
+

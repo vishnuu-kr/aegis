@@ -19,7 +19,7 @@ test.describe('Dashboard E2E Tests', () => {
   test('DB-T1-1: Dashboard route navigation updates URL and page view', async ({ page }) => {
     // Assert we start at Dashboard (Overview)
     await expect(page).toHaveURL(/#\/app\/dashboard/);
-    await expect(page.locator('.ad-topbar h1')).toContainText('Dashboard');
+    await expect(page.locator('header')).toContainText('Dashboard');
     await expect(page.locator('.ad-scroll')).toContainText('Welcome back');
 
     // Define navigation items to click, expected hash, and expected content in PageHeader
@@ -41,7 +41,7 @@ test.describe('Dashboard E2E Tests', () => {
       await expect(page).toHaveURL(new RegExp(item.hash.replace('/', '\\/')));
 
       // Verify correct page title is shown
-      await expect(page.locator('.ad-topbar h1')).toContainText(item.title);
+      await expect(page.locator('header')).toContainText(item.title);
     }
   });
 
@@ -51,19 +51,13 @@ test.describe('Dashboard E2E Tests', () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.waitForTimeout(500); // Let CSS calculations and reflow finish
 
+    // Mobile trigger should be visible
+    const trigger = page.locator('[data-sidebar="trigger"]').first();
+    await expect(trigger).toBeVisible();
+
+    // Desktop sidebar container should be hidden on mobile
     const sidebar = page.locator('.ad-side');
-    await expect(sidebar).toBeVisible();
-
-    // Check sidebar width is collapsed (68px width)
-    const box = await sidebar.boundingBox();
-    expect(box).not.toBeNull();
-    if (box) {
-      expect(box.width).toBeCloseTo(68, 0); // Assert it collapses to ~68px width
-    }
-
-    // Check that brand text is hidden on mobile
-    const brandName = page.locator('.ad-brand-name');
-    await expect(brandName).not.toBeVisible();
+    await expect(sidebar).not.toBeVisible();
 
     // Check that there is no horizontal layout overflow on the page body
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);

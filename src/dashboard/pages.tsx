@@ -1,18 +1,26 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Cpu, ShieldCheck, Inbox as InboxIcon, DollarSign, Activity, AlertTriangle,
-  Pause, Play, Ban, Plus, Check, X, Clock, Search, Download,
+  Pause, Play, Ban, Plus, Check, X, Clock, Search, Download, Info,
   CreditCard, MessageSquare, Cloud, Database, Laptop, Smartphone, KeyRound,
-  Trash2, Server, Settings, MoreHorizontal, ArrowUpRight,
-  ChevronDown, LayoutGrid, Sun, Fingerprint,
+  Trash2, Server, Settings, MoreHorizontal,
+  ChevronDown, Sun, Fingerprint, Bell,
 } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer } from "recharts";
 import {
-  useStore, verdictTone, riskTone, timeAgo, money,
-  type Provider, type Device,
+  useStore, verdictTone, timeAgo, money,
+  type Provider, type Device, type LedgerEntry,
 } from "./data";
-import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader, InteractiveChart, CountdownRing, JsonTree, PolicyComposer, BiometricOverlay } from "./ui";
+import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader, CountdownRing, JsonTree, PolicyComposer, BiometricOverlay } from "./ui";
 import type { RouteKey } from "./Dashboard";
+
+// Premium UI Component imports from the installed blocks
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Delta, DeltaIcon, DeltaValue } from "@/components/delta";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 const statusTone = (s: string) => (s === "active" ? "ok" : s === "paused" ? "warn" : "bad");
 
@@ -24,286 +32,376 @@ const fadeUp: Variants = {
 };
 
 // ============================================================
-// Dashboard / Overview
+// Repurposed analytics — governance metrics
 // ============================================================
+const SPEND_TREND = [
+  { day: "Jun 02", spend: 188 }, { day: "Jun 04", spend: 204 }, { day: "Jun 06", spend: 197 },
+  { day: "Jun 08", spend: 243 }, { day: "Jun 10", spend: 231 }, { day: "Jun 12", spend: 286 },
+  { day: "Jun 14", spend: 274 }, { day: "Jun 16", spend: 318 }, { day: "Jun 18", spend: 352 },
+  { day: "Jun 20", spend: 339 }, { day: "Jun 22", spend: 388 }, { day: "Jun 24", spend: 401 },
+  { day: "Jun 26", spend: 423 }, { day: "Jun 28", spend: 430 },
+];
 
-// Chart mock data
-const SPEND_DATA = [
-  { label: "Mon", value: 42 }, { label: "Tue", value: 58 }, { label: "Wed", value: 35 },
-  { label: "Thu", value: 72 }, { label: "Fri", value: 91 }, { label: "Sat", value: 64 },
-  { label: "Sun", value: 83 },
+const spendChartConfig = {
+  spend: { label: "Spend", color: "#e11d48" },
+} satisfies ChartConfig;
+
+function SpendTrendChart() {
+  return (
+    <ChartContainer config={spendChartConfig} className="aspect-auto h-[240px] w-full">
+      <AreaChart data={SPEND_TREND} margin={{ left: 4, right: 4, top: 8, bottom: 0 }}>
+        <defs>
+          <linearGradient id="fillSpend" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="var(--color-spend)" stopOpacity={0.28} />
+            <stop offset="95%" stopColor="var(--color-spend)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
+        <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} minTickGap={28} className="text-[10px]" />
+        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+        <Area dataKey="spend" type="natural" fill="url(#fillSpend)" stroke="var(--color-spend)" strokeWidth={2} />
+      </AreaChart>
+    </ChartContainer>
+  );
+}
+
+const VERDICT_META: { key: LedgerEntry["verdict"]; label: string; color: string }[] = [
+  { key: "ALLOW", label: "Allow", color: "#10b981" },
+  { key: "STEP_UP", label: "Step-up", color: "#64748b" },
+  { key: "NOTICE", label: "Notice", color: "#94a3b8" },
+  { key: "DENY", label: "Deny", color: "#ef4444" },
 ];
-const DECISION_DATA = [
-  { label: "Mon", value: 12 }, { label: "Tue", value: 28 }, { label: "Wed", value: 19 },
-  { label: "Thu", value: 35 }, { label: "Fri", value: 47 }, { label: "Sat", value: 31 },
-  { label: "Sun", value: 42 },
-];
+
+function DecisionsDonut({ ledger }: { ledger: LedgerEntry[] }) {
+  const data = useMemo(() => {
+    const base: Record<string, number> = { ALLOW: 0, STEP_UP: 0, NOTICE: 0, DENY: 0 };
+    for (const e of ledger) {
+      const v = e.verdict === "OK" ? "ALLOW" : e.verdict;
+      if (v in base) base[v] += 1;
+    }
+    // Seed a little baseline so the donut always reads well in the demo.
+    base.ALLOW += 38; base.STEP_UP += 9; base.NOTICE += 14; base.DENY += 4;
+    return VERDICT_META.map((m) => ({ name: m.label, value: base[m.key], fill: m.color }));
+  }, [ledger]);
+
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const config: ChartConfig = Object.fromEntries(
+    VERDICT_META.map((m) => [m.label, { label: m.label, color: m.color }])
+  );
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative aspect-square h-[170px] w-full flex items-center justify-center">
+        <ChartContainer config={config} className="absolute inset-0 aspect-square h-[170px] w-full">
+          <PieChart>
+            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+            <Pie data={data} dataKey="value" nameKey="name" innerRadius={52} outerRadius={76} strokeWidth={2} stroke="var(--card)">
+              {data.map((d) => <Cell key={d.name} fill={d.fill} />)}
+            </Pie>
+          </PieChart>
+        </ChartContainer>
+        <div className="flex flex-col items-center justify-center text-center">
+          <span className="text-2xl font-bold tracking-tight text-foreground">{total}</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total</span>
+        </div>
+      </div>
+      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-1.5">
+        {data.map((d) => (
+          <div key={d.name} className="flex items-center gap-2 text-xs">
+            <span className="size-2 shrink-0 rounded-[3px]" style={{ background: d.fill }} />
+            <span className="flex-1 text-muted-foreground">{d.name}</span>
+            <span className="font-medium tabular-nums">{total ? Math.round((d.value / total) * 100) : 0}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActivityRow({ tone, title, meta }: { tone: "ok" | "info" | "warn" | "muted"; title: string; meta: string }) {
+  const iconCls =
+    tone === "ok" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+    : tone === "info" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+    : tone === "warn" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+    : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/20";
+
+  const renderIcon = () => {
+    switch (tone) {
+      case "ok":
+        return <Check className="size-3" strokeWidth={2.5} />;
+      case "info":
+        return <Info className="size-3" strokeWidth={2.5} />;
+      case "warn":
+        return <AlertTriangle className="size-3" strokeWidth={2.5} />;
+      default:
+        return <Plus className="size-3" strokeWidth={2.5} />;
+    }
+  };
+
+  return (
+    <div className="flex gap-3 text-xs">
+      <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border shadow-xs ${iconCls}`}>
+        {renderIcon()}
+      </span>
+      <div className="flex flex-col">
+        <span className="font-semibold text-foreground">{title}</span>
+        <span className="mt-0.5 text-[10px] text-muted-foreground">{meta}</span>
+      </div>
+    </div>
+  );
+}
 
 export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
   const { agents, approvals, ledger, settings, toast } = useStore();
   const spend = agents.reduce((s, a) => s + a.spendUsed, 0);
   const activeAgents = agents.filter((a) => a.status === "active").length;
   const decisionsToday = ledger.length + 38;
-  const recent = [...ledger].slice(-7).reverse();
-
-  const approvalsData = useMemo(() => [
-    { label: "Mon", value: 1 },
-    { label: "Tue", value: 3 },
-    { label: "Wed", value: 2 },
-    { label: "Thu", value: Math.max(0, approvals.length - 1) },
-    { label: "Fri", value: approvals.length },
-  ], [approvals.length]);
-
-  const activeAgentsData = useMemo(() => [
-    { label: "Mon", value: 1 },
-    { label: "Tue", value: 2 },
-    { label: "Wed", value: 2 },
-    { label: "Thu", value: activeAgents },
-    { label: "Fri", value: activeAgents },
-  ], [activeAgents]);
+  const recent = [...ledger].slice(-6).reverse();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, background: "transparent" }}>
-      <div className="ad-topbar" style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 500, color: "var(--d-muted)" }}>
-          <LayoutGrid size={15} />
-          <h1 style={{ margin: 0, fontSize: "14px", fontWeight: 500, color: "var(--d-muted)", fontFamily: "inherit", letterSpacing: "normal" }}>Dashboard</h1>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <button 
-            onClick={() => toast("Global search opened (Cmd+K)", "info")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "var(--d-soft)",
-              border: "1px solid var(--d-line)",
-              borderRadius: "var(--d-r-sm)",
-              padding: "0 12px",
-              width: "160px",
-              height: "28px",
-              cursor: "pointer",
-              textAlign: "left",
-              font: "inherit",
-              color: "inherit",
-              boxSizing: "border-box"
-            }}
-          >
-            <Search size={13} style={{ color: "var(--d-faint)" }} />
-            <span style={{ fontSize: "12px", color: "var(--d-faint)", flex: 1, lineHeight: 1 }}>Find</span>
-            <span style={{
-              fontSize: "9px",
-              background: "var(--d-hover)",
-              border: "1px solid var(--d-line)",
-              borderRadius: "3px",
-              color: "var(--d-faint)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "15px",
-              width: "15px",
-              lineHeight: 1
-            }}>F</span>
-          </button>
-          <div style={{
-            width: "28px",
-            height: "28px",
-            borderRadius: "50%",
-            background: "#fff",
-            overflow: "hidden",
-            display: "grid",
-            placeItems: "center",
-            boxSizing: "border-box"
-          }}>
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&auto=format&fit=crop&q=80" alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    <div className="ad-scroll flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+      {/* Welcome Row */}
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <Sun size={16} className="text-muted-foreground" />
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Welcome back</h2>
           </div>
+          <p className="text-xs text-muted-foreground">Here's the current state of your autonomous workspace.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => toast("Timeframe selection menu opened", "info")}>
+            Last 30 days
+            <ChevronDown size={12} />
+          </Button>
+          <Button variant="outline" size="icon-sm" aria-label="More options" title="More options" onClick={() => toast("More dashboard options coming soon", "info")}>
+            <MoreHorizontal size={14} />
+          </Button>
         </div>
       </div>
 
-      <div className="ad-scroll" style={{ padding: "24px 28px" }}>
-        {/* Welcome Row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <Sun size={20} style={{ color: "var(--d-muted)" }} />
-            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: "var(--d-ink)", letterSpacing: "-0.02em", fontFamily: "'Bricolage Grotesque', sans-serif" }}>Welcome back</h2>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <button 
-              onClick={() => toast("Timeframe selection menu opened", "info")}
-              style={{
-                background: "var(--d-panel)",
-                border: "1px solid var(--d-line)",
-                borderRadius: "var(--d-r-sm)",
-                padding: "5px 12px",
-                fontSize: "12px",
-                color: "var(--d-muted)",
-                fontWeight: 500,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                cursor: "pointer"
-              }}
-            >
-              <span>Last 4 hours</span>
-              <ChevronDown size={12} />
-            </button>
-            <button
-              aria-label="More options"
-              title="More options"
-              onClick={() => toast("More dashboard options coming soon", "info")}
-              style={{
-                background: "var(--d-panel)",
-                border: "1px solid var(--d-line)",
-                borderRadius: "var(--d-r-sm)",
-                padding: "5px 8px",
-                fontSize: "12px",
-                color: "var(--d-muted)",
-                cursor: "pointer"
-              }}
-            >
-              <MoreHorizontal size={14} />
-            </button>
+      {/* Warning Banner if Enforcement is off */}
+      {!settings.enforcement && (
+        <div className="flex gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <div>
+            <b>Enforcement is OFF.</b> Agents run unrestricted — policies are evaluated but not enforced. Turn it back on in Settings.
           </div>
         </div>
+      )}
 
-        {/* Warning Banner if Enforcement is off */}
-        {!settings.enforcement && (
-          <div className="ad-banner warn ad-rise" style={{ marginBottom: 20 }}>
-            <AlertTriangle size={18} style={{ flex: "none", marginTop: 1 }} />
+      {/* 1. Stats Cards Row */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Pending approvals"
+          icon={<InboxIcon size={14} />}
+          value={approvals.length}
+          delta={approvals.length ? -12.5 : -100}
+          note="vs yesterday"
+          color="#f97316"
+          chartData={[{ v: 2 }, { v: 3 }, { v: 2 }, { v: 4 }, { v: 3 }, { v: 4 }]}
+        />
+        <StatCard
+          label="Active agents"
+          icon={<Cpu size={14} />}
+          value={`${activeAgents}/${agents.length}`}
+          delta={5.2}
+          note="vs last week"
+          color="#64748b"
+          chartData={[{ v: 1 }, { v: 2 }, { v: 2 }, { v: 2 }, { v: 3 }, { v: 2 }, { v: 2 }]}
+        />
+        <StatCard
+          label="Spend this month"
+          icon={<DollarSign size={14} />}
+          value={money(spend)}
+          delta={8.2}
+          note="vs prior 30d"
+          color="#ef4444"
+          chartData={[{ v: 180 }, { v: 240 }, { v: 210 }, { v: 320 }, { v: 380 }, { v: 350 }, { v: 430 }]}
+        />
+        <StatCard
+          label="Decisions today"
+          icon={<Activity size={14} />}
+          value={decisionsToday}
+          delta={24.1}
+          note="vs yesterday"
+          color="#10b981"
+          chartData={[{ v: 15 }, { v: 22 }, { v: 19 }, { v: 35 }, { v: 42 }, { v: 38 }, { v: 47 }]}
+        />
+      </div>
+
+      {/* 2. Charts Grid */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">Spend over time</CardTitle>
+            <CardDescription className="text-xs">Cumulative spend across mandates over the last 30 days.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SpendTrendChart />
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-1 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">Decisions by verdict</CardTitle>
+            <CardDescription className="text-xs">Distribution of policy outcomes.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <DecisionsDonut ledger={ledger} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 3. Operations & Audit Grid */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        {/* Governed Agents Card */}
+        <Card className="lg:col-span-1 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
             <div>
-              <b>Enforcement is OFF.</b> Agents run unrestricted — policies are evaluated but not enforced. Turn it back on in Settings.
+              <CardTitle className="text-sm font-semibold">Governed agents</CardTitle>
+              <CardDescription className="text-xs">Status & budget tracking</CardDescription>
             </div>
-          </div>
-        )}
-
-        {/* Metrics Grid (4 Columns) */}
-        <motion.div className="ad-metrics-grid" variants={stagger} initial="hidden" animate="visible">
-          {/* Card 1: Pending Approvals */}
-          <motion.div variants={fadeUp} className="ad-card pad">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
-              <span>Pending approvals</span>
-              <InboxIcon size={14} style={{ color: "var(--d-muted)" }} />
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px", width: "100%" }}>
-              <span className="tnum ad-metric-val" style={{ fontSize: "32px", fontWeight: 800 }}>{approvals.length}</span>
-              <span style={{ marginLeft: "auto" }}>
-                <Chip tone={approvals.length ? "warn" : "ok"}>
-                  {approvals.length ? "needs review" : "all clear"}
-                </Chip>
-              </span>
-            </div>
-            <InteractiveChart data={approvalsData} height={60} color={approvals.length ? "var(--d-warn)" : "var(--d-ok)"} />
-          </motion.div>
-
-          {/* Card 2: Active Agents */}
-          <motion.div variants={fadeUp} className="ad-card pad">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
-              <span>Active agents</span>
-              <Cpu size={14} style={{ color: "var(--d-muted)" }} />
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
-              <span className="tnum ad-metric-val" style={{ fontSize: "32px", fontWeight: 800 }}>{`${activeAgents}/${agents.length}`}</span>
-              <span style={{ fontSize: "11px", color: "var(--d-faint)", marginLeft: "auto" }}>
-                governed
-              </span>
-            </div>
-            <InteractiveChart data={activeAgentsData} height={60} color="var(--d-faint)" />
-          </motion.div>
-
-          {/* Card 3: Spend this month — Interactive Chart */}
-          <motion.div variants={fadeUp} className="ad-card pad">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
-              <span>Spend this month</span>
-              <DollarSign size={14} style={{ color: "var(--d-muted)" }} />
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
-              <span className="tnum ad-metric-val" style={{ fontSize: "28px", fontWeight: 800 }}>{money(spend)}</span>
-              <span style={{ fontSize: "11px", color: "var(--d-faint)", marginLeft: "auto" }}>
-                across mandates
-              </span>
-            </div>
-            <InteractiveChart data={SPEND_DATA} height={60} color="var(--d-ink)" unit="$" />
-          </motion.div>
-
-          {/* Card 4: Decisions today — Interactive Chart */}
-          <motion.div variants={fadeUp} className="ad-card pad">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "var(--d-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
-              <span>Decisions today</span>
-              <Activity size={14} style={{ color: "var(--d-muted)" }} />
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "12px" }}>
-              <span className="tnum ad-metric-val" style={{ fontSize: "32px", fontWeight: 800 }}>{decisionsToday}</span>
-              <span style={{ fontSize: "11px", color: "var(--d-ok)", display: "inline-flex", alignItems: "center", gap: "2px", marginLeft: "auto" }}>
-                <ArrowUpRight size={10} /> +12 vs yesterday
-              </span>
-            </div>
-            <InteractiveChart data={DECISION_DATA} height={60} color="var(--d-ok)" />
-          </motion.div>
-        </motion.div>
-
-        {/* Live Audit Ledger & Agents List */}
-        <motion.div className="ad-grid" style={{ gridTemplateColumns: "1.5fr 1fr", gap: "16px" }} variants={stagger} initial="hidden" animate="visible">
-          {/* Live Audit Ledger */}
-          <motion.div variants={fadeUp} className="ad-card pad">
-            <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
-              <div>
-                <div style={{ fontSize: "14px", fontWeight: 650, color: "var(--d-ink)" }}>Live audit ledger</div>
-                <div style={{ fontSize: "12px", color: "var(--d-faint)", marginTop: "2px" }}>Hash-chained · tamper-evident</div>
-              </div>
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
-                <span className="ad-chip ok" style={{ padding: "2px 8px", fontSize: "10px" }}><span className="dot" />LIVE</span>
-                <Btn sm variant="ghost" onClick={() => onNav("history")}>View all</Btn>
-              </div>
-            </div>
-            <div className="ad-stack" style={{ gap: "12px" }}>
-              {recent.map((e) => (
-                <div key={e.seq} className="ad-ledger-row">
-                  <Chip tone={verdictTone(e.verdict)} dot>{e.verdict}</Chip>
-                  <span className="mono" style={{ fontSize: "12.5px", color: "var(--d-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{e.action}</span>
-                  <span style={{ fontSize: "11.5px", color: "var(--d-faint)", flex: "none" }}>{e.agent}</span>
-                  <span className="mono" style={{ fontSize: "11.5px", color: "var(--d-faint)", flex: "none" }}>{timeAgo(e.ts)}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Agents */}
-          <motion.div variants={fadeUp} className="ad-card pad">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <div>
-                <div style={{ fontSize: "14px", fontWeight: 650, color: "var(--d-ink)" }}>Agents</div>
-                <div style={{ fontSize: "12px", color: "var(--d-faint)", marginTop: "2px" }}>Status & monthly spend</div>
-              </div>
-              <Btn sm variant="ghost" onClick={() => onNav("governance")}>Manage</Btn>
-            </div>
-            <div className="ad-stack" style={{ gap: "16px" }}>
-              {agents.map((a) => {
-                const pct = Math.min(100, (a.spendUsed / a.spendLimit) * 100);
-                return (
-                  <div key={a.id} style={{ padding: "2px 0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, fontSize: "13px" }}>
-                      <span style={{ fontWeight: 600, color: "var(--d-ink)" }}>{a.name}</span>
-                      <Chip tone={statusTone(a.status) as "ok" | "warn" | "bad"} dot>{a.status}</Chip>
-                      <span className="mono" style={{ marginLeft: "auto", fontSize: "12px", color: "var(--d-faint)" }}>
-                        {money(a.spendUsed)} <span style={{ color: "var(--d-faint)" }}>/ {money(a.spendLimit)}</span>
-                      </span>
-                    </div>
-                    {/* Meter */}
-                    <div className="ad-meter" style={{ height: "6px", background: "var(--d-track)", borderRadius: "4px", overflow: "hidden" }}>
-                      <span style={{ display: "block", height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, var(--d-ink), var(--d-faint))", borderRadius: "4px" }} />
-                    </div>
+            <Button variant="ghost" size="sm" onClick={() => onNav("governance")}>Manage</Button>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {agents.map((a) => {
+              const pct = Math.min(100, (a.spendUsed / a.spendLimit) * 100);
+              return (
+                <div key={a.id} className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="flex size-6 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                      <Cpu size={12} />
+                    </span>
+                    <span className="font-medium text-foreground">{a.name}</span>
+                    <Chip tone={statusTone(a.status) as "ok" | "warn" | "bad"} dot>{a.status}</Chip>
+                    <span className="mono ml-auto text-[10px] font-semibold text-muted-foreground">{Math.round(pct)}%</span>
                   </div>
-                );
-              })}
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200/50 dark:bg-zinc-800/80">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${pct}%`,
+                        background: a.status === "paused"
+                          ? "linear-gradient(90deg, #64748b, #94a3b8)"
+                          : "linear-gradient(90deg, #b91c1c, #ef4444)",
+                        boxShadow: a.status === "paused"
+                          ? "none"
+                          : "0 0 8px rgba(239, 68, 68, 0.2)"
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* Live Audit Ledger Table */}
+        <Card className="lg:col-span-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+            <div>
+              <CardTitle className="text-sm font-semibold">Live audit ledger</CardTitle>
+              <CardDescription className="text-xs">Cryptographically secured event stream</CardDescription>
             </div>
-          </motion.div>
-        </motion.div>
+            <Button variant="ghost" size="sm" onClick={() => onNav("history")}>View all</Button>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[88px] text-xs">Verdict</TableHead>
+                  <TableHead className="text-xs">Action</TableHead>
+                  <TableHead className="w-[100px] text-xs">Agent</TableHead>
+                  <TableHead className="w-[70px] text-right text-xs">When</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recent.map((e) => (
+                  <TableRow key={e.seq}>
+                    <TableCell className="py-2.5"><Chip tone={verdictTone(e.verdict)} dot>{e.verdict}</Chip></TableCell>
+                    <TableCell className="max-w-[200px] truncate py-2.5 text-xs font-medium">{e.action}</TableCell>
+                    <TableCell className="py-2.5 text-xs text-muted-foreground">{e.agent}</TableCell>
+                    <TableCell className="mono py-2.5 text-right text-[11px] text-muted-foreground">{timeAgo(e.ts)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Workspace Activity Feed */}
+        <Card className="lg:col-span-1 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">Workspace activity</CardTitle>
+            <CardDescription className="text-xs">Operational signals & security logs</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3.5">
+            <ActivityRow tone="ok" title="SLA warning cleared" meta="Ops Agent · 12 min ago" />
+            <ActivityRow tone="info" title="Mandate signed" meta="Stripe · 1 hour ago" />
+            <ActivityRow tone="warn" title="Budget threshold warning" meta="Research Agent · 3 hours ago" />
+            <ActivityRow tone="warn" title="Suspicious tool execution blocked" meta="Aegis Enforcer · 5 hours ago" />
+            <ActivityRow tone="ok" title="Biometric signature verified" meta="Finance Agent · 8 hours ago" />
+            <ActivityRow tone="muted" title="Connected Stripe provider" meta="System · 1 day ago" />
+            <ActivityRow tone="muted" title="Postgres database backup rotated" meta="System · 2 days ago" />
+          </CardContent>
+        </Card>
       </div>
     </div>
+  );
+}
+
+function StatCard({
+  label, icon, value, delta, note, color, chartData
+}: {
+  label: string;
+  icon: React.ReactNode;
+  value: React.ReactNode;
+  delta: number;
+  note: string;
+  color: string;
+  chartData: { v: number }[];
+}) {
+  return (
+    <Card className="relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50 flex flex-col justify-between">
+      <div>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</CardTitle>
+          <span className="text-muted-foreground">{icon}</span>
+        </CardHeader>
+        <CardContent className="pb-1">
+          <div className="text-2xl font-semibold tracking-tight tabular-nums">{value}</div>
+        </CardContent>
+      </div>
+
+      <div className="h-10 w-full overflow-hidden opacity-60 dark:opacity-40 select-none pointer-events-none">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+            <defs>
+              <linearGradient id={`spark-grad-${label.replace(/\s+/g, "-")}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <Area
+              type="monotone"
+              dataKey="v"
+              stroke={color}
+              strokeWidth={1.5}
+              fill={`url(#spark-grad-${label.replace(/\s+/g, "-")})`}
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <CardFooter className="gap-1.5 text-xs text-muted-foreground pt-2">
+        <Delta value={delta} variant="badge">
+          <DeltaIcon />
+          <DeltaValue />
+        </Delta>
+        <span>{note}</span>
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -323,54 +421,79 @@ export function GovernancePage() {
       <PageHeader
         title="Governance"
         subtitle="Every agent, its mandates, and the limits you've signed."
-        actions={<Btn variant="primary" icon={<Plus size={15} />} onClick={() => setComposerOpen(true)}>New mandate</Btn>}
+        actions={<Button variant="default" size="sm" className="h-8 gap-1.5" onClick={() => setComposerOpen(true)}><Plus size={14} /> New mandate</Button>}
       />
-      <div className="ad-scroll">
-        <motion.div className="ad-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))" }} variants={stagger} initial="hidden" animate="visible">
+      <div className="ad-scroll overflow-y-auto flex-1 p-6">
+        <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-6" variants={stagger} initial="hidden" animate="visible">
           {agents.map((a) => {
             const pct = Math.min(100, (a.spendUsed / a.spendLimit) * 100);
             return (
-              <motion.div key={a.id} variants={fadeUp} className="ad-card pad hover">
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                  <span className="ad-row-ico" style={{ color: "var(--d-crimson)" }}><Cpu size={18} /></span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontWeight: 650, fontSize: 15 }}>{a.name}</span>
-                      <Chip tone={statusTone(a.status) as "ok" | "warn" | "bad"} dot>{a.status}</Chip>
+              <motion.div key={a.id} variants={fadeUp} className="w-full">
+                <Card className="bg-card text-card-foreground border-border shadow-none overflow-hidden relative transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50">
+                  {/* Custom Glass Stripe Header */}
+                  <div className="flex items-center gap-3 p-4 bg-muted/40 border-b border-border">
+                    <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground border border-border">
+                      <Cpu size={16} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-card-foreground">{a.name}</span>
+                        <Chip tone={statusTone(a.status) as "ok" | "warn" | "bad"} dot>{a.status}</Chip>
+                      </div>
+                      <div className="mono text-[10px] text-muted-foreground mt-0.5 overflow-hidden text-overflow-ellipsis whitespace-nowrap">{a.did}</div>
                     </div>
-                    <div className="mono" style={{ fontSize: 11.5, color: "var(--d-faint)", marginTop: 3 }}>{a.did}</div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-[11px] text-muted-foreground font-medium">Enforce</span>
+                      <Toggle on={a.enforcement} onClick={() => toggleAgentEnforcement(a.id)} label={`enforcement for ${a.name}`} />
+                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "none" }}>
-                    <span style={{ fontSize: 11.5, color: "var(--d-faint)" }}>Enforce</span>
-                    <Toggle on={a.enforcement} onClick={() => toggleAgentEnforcement(a.id)} label={`enforcement for ${a.name}`} />
-                  </div>
-                </div>
 
-                <div style={{ display: "flex", gap: 18, margin: "16px 0 14px" }}>
-                  <Metric label="Tasks run" value={a.tasks.toLocaleString()} />
-                  <Metric label="Spend" value={`${money(a.spendUsed)} / ${money(a.spendLimit)}`} />
-                </div>
-                <div className="ad-meter" style={{ marginBottom: 16 }}><span style={{ width: `${pct}%` }} /></div>
+                  <CardContent className="p-4 flex flex-col gap-4">
+                    <div className="flex gap-6">
+                      <Metric label="Tasks run" value={a.tasks.toLocaleString()} />
+                      <Metric label="Spend" value={`${money(a.spendUsed)} / ${money(a.spendLimit)}`} />
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200/50 dark:bg-zinc-800/80">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${pct}%`,
+                          background: a.status === "paused"
+                            ? "linear-gradient(90deg, #64748b, #94a3b8)"
+                            : "linear-gradient(90deg, #b91c1c, #ef4444)",
+                          boxShadow: a.status === "paused"
+                            ? "none"
+                            : "0 0 8px rgba(239, 68, 68, 0.2)"
+                        }}
+                      />
+                    </div>
 
-                <div style={{ fontSize: 11.5, color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Mandates</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
-                  {a.mandates.map((m) => (
-                    <span key={m.id} className="ad-chip muted" title={m.detail}><KeyRound size={11} /> {m.label}</span>
-                  ))}
-                </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground text-uppercase tracking-wider font-semibold mb-2">Mandates</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {a.mandates.map((m) => (
+                          <span key={m.id} className="inline-flex items-center gap-1.5 text-xs text-card-foreground bg-muted border border-border rounded-full px-2.5 py-1" title={m.detail}>
+                            <KeyRound size={10} className="text-muted-foreground" />
+                            {m.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
 
-                <div style={{ display: "flex", gap: 8 }}>
-                  {a.status === "active" ? (
-                    <Btn sm variant="ghost" icon={<Pause size={14} />} onClick={() => setAgentStatus(a.id, "paused")}>Pause</Btn>
-                  ) : a.status === "paused" ? (
-                    <Btn sm variant="ghost" icon={<Play size={14} />} onClick={() => setAgentStatus(a.id, "active")}>Resume</Btn>
-                  ) : (
-                    <Btn sm variant="ghost" icon={<Play size={14} />} onClick={() => setAgentStatus(a.id, "active")}>Reactivate</Btn>
-                  )}
-                  {a.status !== "revoked" && (
-                    <Btn sm variant="danger" icon={<Ban size={14} />} onClick={() => setAgentStatus(a.id, "revoked")}>Revoke</Btn>
-                  )}
-                </div>
+                  <CardFooter className="p-4 pt-0 flex gap-2 border-t border-border/40 mt-1 pt-3.5">
+                    {a.status === "active" ? (
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setAgentStatus(a.id, "paused")}><Pause size={12} />Pause</Button>
+                    ) : a.status === "paused" ? (
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setAgentStatus(a.id, "active")}><Play size={12} />Resume</Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setAgentStatus(a.id, "active")}><Play size={12} />Reactivate</Button>
+                    )}
+                    {a.status !== "revoked" && (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 gap-1 ml-auto" onClick={() => setAgentStatus(a.id, "revoked")}><Ban size={12} />Revoke</Button>
+                    )}
+                  </CardFooter>
+                </Card>
               </motion.div>
             );
           })}
@@ -386,8 +509,8 @@ export function GovernancePage() {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 11, color: "var(--d-faint)", marginBottom: 3 }}>{label}</div>
-      <div className="mono" style={{ fontSize: 13.5, fontWeight: 600 }}>{value}</div>
+      <div className="text-[10px] text-muted-foreground mb-1">{label}</div>
+      <div className="mono font-semibold text-xs tabular-nums text-card-foreground">{value}</div>
     </div>
   );
 }
@@ -400,6 +523,12 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
   const [filter, setFilter] = useState<"all" | "STEP_UP" | "NOTICE">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bioTarget, setBioTarget] = useState<string | null>(null);
+  // Live clock so the countdown rings tick (and to keep render pure).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
   const shown = approvals.filter((a) => filter === "all" || a.kind === filter);
   const selected = shown.find((a) => a.id === selectedId) || null;
 
@@ -436,28 +565,35 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         title="Inbox"
         subtitle="Pending requests waiting on your signature."
         actions={
-          <div className="ad-seg">
-            {(["all", "STEP_UP", "NOTICE"] as const).map((f) => (
-              <button key={f} className={filter === f ? "is-active" : ""} onClick={() => setFilter(f)}>
-                {filter === f && (
-                  <motion.div
-                    layoutId="active-seg-inbox"
-                    className="ad-seg-pill"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <span>{f === "all" ? "All" : f === "STEP_UP" ? "Step-up" : "Notice"}</span>
-              </button>
-            ))}
+          <div className="flex bg-muted p-0.5 rounded-lg border border-border gap-0.5">
+            {(["all", "STEP_UP", "NOTICE"] as const).map((f) => {
+              const active = filter === f;
+              return (
+                <button 
+                  key={f} 
+                  className={`h-7 px-3 text-xs font-semibold rounded-md transition-all duration-150 relative cursor-pointer border-none bg-transparent ${active ? "text-card-foreground" : "text-muted-foreground hover:text-card-foreground"}`}
+                  onClick={() => setFilter(f)}
+                >
+                  {active && (
+                    <motion.div
+                      layoutId="active-seg-inbox"
+                      className="absolute inset-0 bg-card rounded-[5px] border border-border/40 shadow-sm z-0"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{f === "all" ? "All" : f === "STEP_UP" ? "Step-up" : "Notice"}</span>
+                </button>
+              );
+            })}
           </div>
         }
       />
 
       {shown.length === 0 ? (
-        <div className="ad-scroll">
-          <div className="ad-card" style={{ display: "grid", placeItems: "center", padding: "64px 24px", position: "relative", overflow: "hidden" }}>
+        <div className="ad-scroll overflow-y-auto flex-1 p-6">
+          <Card className="bg-card text-card-foreground border-border shadow-none flex flex-col items-center justify-center p-12 relative overflow-hidden">
             {/* Background wireframe decoration */}
-            <div style={{ position: "absolute", inset: 0, opacity: 0.05, pointerEvents: "none", zIndex: 0 }}>
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0">
               <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <pattern id="grid-empty" width="32" height="32" patternUnits="userSpaceOnUse">
@@ -468,79 +604,79 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
               </svg>
             </div>
             
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", position: "relative", zIndex: 1, maxWidth: "420px" }}>
-              <div style={{ position: "relative", marginBottom: "20px", display: "flex", alignItems: "center", justifyItems: "center" }}>
-                <div style={{
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "16px",
-                  display: "grid",
-                  placeItems: "center",
-                  background: "linear-gradient(135deg, var(--d-crimson) 0%, var(--d-info) 100%)",
-                  color: "#fff",
-                  boxShadow: "0 8px 24px -6px rgba(var(--accent-rgb), 0.3)",
-                }}>
-                  <Check size={28} strokeWidth={2.5} />
-                </div>
+            <div className="flex flex-col items-center text-center relative z-10 max-w-sm gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center">
+                <Check size={22} strokeWidth={2.5} />
               </div>
 
-              <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px", color: "var(--d-ink)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>Inbox zero</h3>
-              <p style={{ fontSize: "13.5px", color: "var(--d-muted)", lineHeight: "1.5", margin: "0 0 24px" }}>
-                All clear! No pending actions require your signature at the moment.
-              </p>
+              <div className="flex flex-col gap-1">
+                <h3 className="text-base font-bold text-card-foreground tracking-tight">Inbox zero</h3>
+                <p className="text-xs text-muted-foreground leading-normal">
+                  All clear! No pending actions require your signature at the moment.
+                </p>
+              </div>
               
-              <div style={{
-                background: "var(--d-soft)",
-                border: "1px solid var(--d-line)",
-                borderRadius: "8px",
-                padding: "16px",
-                width: "100%",
-                boxSizing: "border-box"
-              }}>
-                <div style={{ fontWeight: 600, fontSize: "12px", color: "var(--d-ink)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Next Steps</div>
-                <div style={{ fontSize: "12.5px", color: "var(--d-muted)", lineHeight: "1.4", marginBottom: "12px" }}>
+              <div className="bg-muted/40 border border-border rounded-lg p-4 w-full">
+                <div className="font-semibold text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Next Steps</div>
+                <div className="text-xs text-muted-foreground leading-normal mb-3">
                   Configure additional governance mandates or connect more service providers to expand coverage.
                 </div>
-                <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                  <Btn sm variant="primary" onClick={() => onNav("governance")}>Configure mandates</Btn>
-                  <Btn sm variant="ghost" onClick={() => onNav("providers")}>Connect providers</Btn>
+                <div className="flex gap-2 justify-center">
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onNav("governance")}>Configure mandates</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onNav("providers")}>Connect providers</Button>
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       ) : (
-        <div className="ad-inbox-split">
+        <div className="flex flex-1 min-h-0 divide-x divide-border">
           {/* Left: List */}
-          <div className="ad-inbox-list">
+          <div className="w-[320px] flex-shrink-0 overflow-y-auto p-4 flex flex-col gap-3">
             <AnimatePresence>
-              {shown.map((a) => (
-                <motion.div
-                  key={a.id}
-                  className={`ad-inbox-item${selectedId === a.id ? " selected" : ""}`}
-                  onClick={() => setSelectedId(a.id)}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {/* eslint-disable-next-line react-hooks/purity */}
-                  <CountdownRing remaining={Math.max(0, Math.floor((a.createdAt + 3600000 - Date.now()) / 1000))} total={3600} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <Chip tone={a.kind === "STEP_UP" ? "warn" : "info"} dot>{a.kind === "STEP_UP" ? "STEP-UP" : "NOTICE"}</Chip>
-                      <Chip tone={riskTone(a.risk)}>{a.risk} risk</Chip>
+              {shown.map((a) => {
+                const selected = selectedId === a.id;
+                return (
+                  <motion.div
+                    key={a.id}
+                    className={`flex items-start gap-3 p-3.5 rounded-lg border transition-all duration-150 cursor-pointer relative overflow-hidden ${selected ? "bg-muted border-border" : "bg-card border-border/40 hover:border-border"}`}
+                    onClick={() => setSelectedId(a.id)}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {selected && (
+                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500" />
+                    )}
+                    <div className="mt-0.5 flex-shrink-0">
+                      <CountdownRing remaining={Math.max(0, Math.floor((a.createdAt + 3600000 - now) / 1000))} total={3600} />
                     </div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--d-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
-                    <div style={{ fontSize: 12, color: "var(--d-faint)", marginTop: 2 }}>{a.agent} · {timeAgo(a.createdAt)}</div>
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          <span className={`size-1.5 rounded-full ${a.kind === "STEP_UP" ? "bg-amber-500" : "bg-blue-500"}`} />
+                          {a.kind === "STEP_UP" ? "Step-up" : "Notice"}
+                        </span>
+                        <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider ${
+                          a.risk === "high" ? "bg-red-500/10 text-red-500 border border-red-500/15"
+                          : a.risk === "medium" ? "bg-amber-500/10 text-amber-500 border border-amber-500/15"
+                          : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/15"
+                        }`}>
+                          {a.risk}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-xs text-card-foreground leading-snug truncate">{a.title}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">{a.agent} · {timeAgo(a.createdAt)}</div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
 
           {/* Right: Detail */}
-          <div className="ad-inbox-detail">
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0 bg-muted/10">
             <AnimatePresence mode="wait">
               {selected ? (
                 <motion.div
@@ -549,43 +685,78 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.2 }}
-                  style={{ display: "flex", flexDirection: "column", gap: 20, flex: 1 }}
+                  className="flex flex-col flex-1 h-full"
                 >
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <Chip tone={selected.kind === "STEP_UP" ? "warn" : "info"} dot>{selected.kind === "STEP_UP" ? "STEP-UP" : "NOTICE"}</Chip>
-                      <Chip tone={riskTone(selected.risk)}>{selected.risk} risk</Chip>
-                      <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--d-faint)" }}>
-                        <Clock size={13} /> {timeAgo(selected.createdAt)}
-                      </span>
+                  <Card className="bg-card text-card-foreground border-border shadow-none flex flex-col flex-1 p-6 relative gap-6">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2.5">
+                        <span className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          <span className={`size-1.5 rounded-full ${selected.kind === "STEP_UP" ? "bg-amber-500" : "bg-blue-500"}`} />
+                          {selected.kind === "STEP_UP" ? "Step-up" : "Notice"}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                          selected.risk === "high" ? "bg-red-500/10 text-red-500 border border-red-500/15"
+                          : selected.risk === "medium" ? "bg-amber-500/10 text-amber-500 border border-amber-500/15"
+                          : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/15"
+                        }`}>
+                          {selected.risk} risk
+                        </span>
+                        <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock size={12} /> {timeAgo(selected.createdAt)}
+                        </span>
+                      </div>
+                      <h2 className="margin-0 text-base font-bold text-card-foreground tracking-tight leading-snug">{selected.title}</h2>
+                      <div className="text-xs text-muted-foreground mt-1.5">{selected.agent} · {selected.detail}</div>
                     </div>
-                    <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--d-ink)", fontFamily: "'Bricolage Grotesque', sans-serif" }}>{selected.title}</h2>
-                    <div style={{ fontSize: 13.5, color: "var(--d-muted)" }}>{selected.agent} · {selected.detail}</div>
-                  </div>
 
-                  {/* JSON policy tree */}
-                  <div>
-                    <div style={{ fontSize: 11, color: "var(--d-faint)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, fontWeight: 600 }}>Mandate Evaluation</div>
-                    {policyJson && <JsonTree data={policyJson as Record<string, unknown>} />}
-                  </div>
+                    {/* JSON policy tree */}
+                    <div className="flex-1 min-h-0 flex flex-col gap-2">
+                      <div className="text-[10px] text-muted-foreground text-uppercase tracking-wider font-semibold">Mandate Evaluation</div>
+                      <div className="flex-1 overflow-y-auto bg-muted/40 rounded-lg border border-border p-2">
+                        {policyJson && <JsonTree data={policyJson as Record<string, unknown>} />}
+                      </div>
+                    </div>
 
-                  {/* Action buttons */}
-                  <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 16, borderTop: "1px solid var(--d-line)" }}>
-                    <Btn variant="ok" icon={<Fingerprint size={15} />} onClick={() => handleApprove(selected.id)}>Approve & sign</Btn>
-                    <Btn variant="danger" icon={<X size={15} />} onClick={() => { resolveApproval(selected.id, "deny"); setSelectedId(null); }}>Deny</Btn>
-                    <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 11.5, color: "var(--d-faint)" }}>Signed on-device · passkey</span>
-                  </div>
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-3 pt-4 border-t border-border mt-auto">
+                      <Button variant="default" size="sm" className="h-8 gap-1.5 font-semibold bg-white text-black hover:bg-white/90" onClick={() => handleApprove(selected.id)}>
+                        <Fingerprint size={14} /> Approve & sign
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 text-red-500 border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500"
+                        onClick={() => { resolveApproval(selected.id, "deny"); setSelectedId(null); }}
+                      >
+                        <X size={14} /> Deny
+                      </Button>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-medium">Signed on-device · passkey</span>
+                    </div>
+                  </Card>
                 </motion.div>
               ) : (
                 <motion.div
                   key="empty"
-                  className="ad-inbox-detail-empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground p-12 text-center"
                 >
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                    <InboxIcon size={24} style={{ opacity: 0.3 }} />
-                    <span>Select a request to inspect</span>
+                  <div className="flex flex-col items-center gap-4 max-w-xs">
+                    <div className="size-14 rounded-2xl border border-border bg-muted/50 flex items-center justify-center">
+                      <InboxIcon size={28} className="opacity-30" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm font-semibold text-card-foreground">No request selected</span>
+                      <span className="text-xs text-muted-foreground leading-relaxed">
+                        Select a pending request on the left to review the action details, check risk context, and sign or deny with your passkey.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 bg-muted/40 border border-border rounded-lg p-3 text-left w-full">
+                      <ShieldCheck size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-[11px] text-muted-foreground leading-relaxed">
+                        All approvals are signed on-device using a passkey. Aegis never transmits your private key.
+                      </span>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -623,53 +794,92 @@ export function HistoryPage() {
         subtitle="Every decision, hash-chained and independently verifiable."
         actions={
           <>
-            <div className="ad-search">
-              <Search />
-              <input placeholder="Search actions, agents…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <div className="flex items-center bg-muted border border-border rounded-md px-2.5 py-1 w-64 h-8 gap-1.5">
+              <Search size={14} className="text-muted-foreground" />
+              <input 
+                placeholder="Search actions, agents…" 
+                value={q} 
+                onChange={(e) => setQ(e.target.value)} 
+                className="bg-transparent border-none outline-none text-xs text-card-foreground flex-1 placeholder:text-muted-foreground"
+              />
             </div>
-            <Btn variant="ghost" icon={<Download size={15} />} onClick={() => toast(`Exported ${rows.length} records`, "ok")}>Export</Btn>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => toast(`Exported ${rows.length} records`, "ok")}>
+              <Download size={14} /> Export
+            </Button>
           </>
         }
       />
-      <div className="ad-scroll">
-        <div className="ad-seg" style={{ marginBottom: 16 }}>
-          {(["all", "ALLOW", "STEP_UP", "DENY"] as const).map((f) => (
-            <button key={f} className={vf === f ? "is-active" : ""} onClick={() => setVf(f)}>
-              {vf === f && (
-                <motion.div
-                  layoutId="active-seg-history"
-                  className="ad-seg-pill"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
-              <span>{f === "all" ? "All verdicts" : f === "STEP_UP" ? "Step-up" : f.charAt(0) + f.slice(1).toLowerCase()}</span>
-            </button>
-          ))}
+      <div className="ad-scroll overflow-y-auto flex-1 p-6 flex flex-col gap-4">
+        <div className="flex bg-muted p-0.5 rounded-lg border border-border gap-0.5 self-start">
+          {(["all", "ALLOW", "STEP_UP", "DENY"] as const).map((f) => {
+            const active = vf === f;
+            return (
+              <button 
+                key={f} 
+                className={`h-7 px-3 text-xs font-semibold rounded-md transition-all duration-150 relative cursor-pointer border-none bg-transparent ${active ? "text-card-foreground" : "text-muted-foreground hover:text-card-foreground"}`}
+                onClick={() => setVf(f)}
+              >
+                {active && (
+                  <motion.div
+                    layoutId="active-seg-history"
+                    className="absolute inset-0 bg-card rounded-[5px] border border-border/40 shadow-sm z-0"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{f === "all" ? "All verdicts" : f === "STEP_UP" ? "Step-up" : f.charAt(0) + f.slice(1).toLowerCase()}</span>
+              </button>
+            );
+          })}
         </div>
-        <div className="ad-card ad-rise" style={{ overflow: "hidden" }}>
+
+        <Card className="bg-card text-card-foreground border-border shadow-none overflow-hidden">
           {rows.length === 0 ? (
             <EmptyState icon={<Search size={22} />} title="No matching records">Try a different search or verdict filter.</EmptyState>
           ) : (
-            <table className="ad-table">
-              <thead>
-                <tr><th>Seq</th><th>Event</th><th>Action</th><th>Agent</th><th>Verdict</th><th>When</th><th>Hash</th></tr>
-              </thead>
-              <tbody>
-                {rows.map((e) => (
-                  <tr key={e.seq}>
-                    <td className="mono" style={{ color: "var(--d-faint)" }}>{e.seq}</td>
-                    <td><span className="ad-chip muted">{e.eventType}</span></td>
-                    <td className="mono" style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.action}</td>
-                    <td style={{ color: "var(--d-muted)" }}>{e.agent}</td>
-                    <td><Chip tone={verdictTone(e.verdict)} dot>{e.verdict}</Chip></td>
-                    <td className="mono" style={{ color: "var(--d-faint)", whiteSpace: "nowrap" }}>{timeAgo(e.ts)}</td>
-                    <td className="mono" style={{ color: "var(--d-faint)" }}>{e.hash}</td>
-                  </tr>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px] p-3 text-xs font-semibold">Seq</TableHead>
+                  <TableHead className="w-[80px] p-3 text-xs font-semibold">Event</TableHead>
+                  <TableHead className="p-3 text-xs font-semibold">Action</TableHead>
+                  <TableHead className="w-[120px] p-3 text-xs font-semibold">Agent</TableHead>
+                  <TableHead className="w-[100px] p-3 text-xs font-semibold">Verdict</TableHead>
+                  <TableHead className="w-[100px] p-3 text-xs font-semibold">When</TableHead>
+                  <TableHead className="w-[90px] p-3 text-xs font-semibold text-right">Hash</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((e, index) => (
+                  <TableRow 
+                    key={e.seq}
+                    className={`hover:bg-muted/40 transition-colors duration-150 ${index % 2 === 0 ? "bg-transparent" : "bg-muted/10"}`}
+                  >
+                    <TableCell className="p-3 text-muted-foreground mono text-xs">{e.seq}</TableCell>
+                    <TableCell className="p-3">
+                      <span className="inline-flex items-center text-[10px] font-semibold text-muted-foreground border border-border rounded px-1.5 py-0.5 bg-muted/30">{e.eventType}</span>
+                    </TableCell>
+                    <TableCell className="p-3 font-medium max-w-[240px] truncate text-xs mono">{e.action}</TableCell>
+                    <TableCell className="p-3 text-muted-foreground text-xs">{e.agent}</TableCell>
+                    <TableCell className="p-3">
+                      <Chip tone={verdictTone(e.verdict)} dot>{e.verdict}</Chip>
+                    </TableCell>
+                    <TableCell className="p-3 text-muted-foreground text-xs mono whitespace-nowrap">{timeAgo(e.ts)}</TableCell>
+                    <TableCell 
+                      className="p-3 text-right text-xs text-muted-foreground mono cursor-pointer hover:underline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(e.hash);
+                        toast("Hash copied to clipboard", "ok");
+                      }}
+                      title="Click to copy full hash"
+                    >
+                      {e.hash.length > 10 ? e.hash.slice(0, 8) + "…" : e.hash}
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </div>
+        </Card>
       </div>
     </>
   );
@@ -679,7 +889,7 @@ export function HistoryPage() {
 // Providers
 // ============================================================
 const provIcon = (c: Provider["category"]) =>
-  c === "payments" ? <CreditCard size={18} /> : c === "comms" ? <MessageSquare size={18} /> : c === "data" ? <Database size={18} /> : <Cloud size={18} />;
+  c === "payments" ? <CreditCard size={16} /> : c === "comms" ? <MessageSquare size={16} /> : c === "data" ? <Database size={16} /> : <Cloud size={16} />;
 
 export function ProvidersPage() {
   const { providers, toggleProvider, toast } = useStore();
@@ -689,20 +899,39 @@ export function ProvidersPage() {
       <PageHeader
         title="Providers"
         subtitle={`${connected} of ${providers.length} connected — credentials stay vaulted, never exposed to the agent.`}
-        actions={<Btn variant="primary" icon={<Plus size={15} />} onClick={() => toast("Browse the provider catalog", "info")}>Connect new</Btn>}
+        actions={<Button variant="default" size="sm" className="h-8 gap-1.5" onClick={() => toast("Browse the provider catalog", "info")}><Plus size={14} /> Connect new</Button>}
       />
-      <div className="ad-scroll">
-        <motion.div className="ad-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }} variants={stagger} initial="hidden" animate="visible">
+      <div className="ad-scroll overflow-y-auto flex-1 p-6">
+        <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" variants={stagger} initial="hidden" animate="visible">
           {providers.map((p) => (
-            <motion.div key={p.id} variants={fadeUp} className="ad-row">
-              <span className="ad-row-ico" style={{ color: p.connected ? "var(--d-crimson)" : "var(--d-faint)" }}>{provIcon(p.category)}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="ad-row-name">{p.name}</div>
-                <div className="ad-row-desc">{p.desc}</div>
-              </div>
-              {p.connected
-                ? <Btn sm variant="ghost" onClick={() => toggleProvider(p.id)}>Disconnect</Btn>
-                : <Btn sm variant="primary" onClick={() => toggleProvider(p.id)}>Connect</Btn>}
+            <motion.div key={p.id} variants={fadeUp} className="w-full flex">
+              <Card
+                className={`bg-card text-card-foreground shadow-none p-4 w-full relative transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-zinc-300/40 dark:hover:border-zinc-800/50 ${p.connected ? "border-foreground" : "border-border"}`}
+              >
+                <div className="flex items-center justify-between gap-4 w-full">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 relative border border-border ${p.connected ? "bg-card-foreground text-card" : "bg-muted text-muted-foreground"}`}>
+                      {provIcon(p.category)}
+                      {p.connected && (
+                        <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center border border-card">
+                          <Check size={8} strokeWidth={3.5} />
+                        </span>
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm text-card-foreground leading-none">{p.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1.5 leading-normal">{p.desc}</div>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {p.connected ? (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 px-2.5" onClick={() => toggleProvider(p.id)}>Disconnect</Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => toggleProvider(p.id)}>Connect</Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
             </motion.div>
           ))}
         </motion.div>
@@ -718,6 +947,9 @@ const devIcon = (k: Device["kind"]) => (k === "laptop" ? <Laptop size={18} /> : 
 
 export function DevicesPage() {
   const { devices, revokeDevice, addDevice } = useStore();
+  const activeCount = devices.filter(d => (Date.now() - d.lastSeen) < 60 * 60 * 1000).length;
+  const keyCount = devices.filter(d => d.kind === "security-key").length;
+
   return (
     <>
       <PageHeader
@@ -727,21 +959,42 @@ export function DevicesPage() {
       />
       <div className="ad-scroll">
         <motion.div className="ad-stack" style={{ maxWidth: 720 }} variants={stagger} initial="hidden" animate="visible">
-          {devices.map((d) => (
-            <motion.div key={d.id} variants={fadeUp} className="ad-row">
-              <span className="ad-row-ico">{devIcon(d.kind)}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="ad-row-name" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {d.name}
-                  {d.current && <Chip tone="ok" dot>this device</Chip>}
-                </div>
-                <div className="ad-row-desc">Last active {timeAgo(d.lastSeen)} · passkey</div>
+          {/* Stats Strip */}
+          <motion.div variants={fadeUp} className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Total devices", value: devices.length },
+              { label: "Active recently", value: activeCount },
+              { label: "Security keys", value: keyCount },
+            ].map(stat => (
+              <div key={stat.label} className="ad-card pad flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{stat.label}</span>
+                <span className="text-2xl font-bold text-card-foreground tabular-nums">{stat.value}</span>
               </div>
-              <IconBtn aria-label={`revoke ${d.name}`} disabled={d.current} title={d.current ? "Can't revoke the current device" : "Revoke"} onClick={() => revokeDevice(d.id)} style={d.current ? { opacity: .4, cursor: "not-allowed" } : undefined}>
-                <Trash2 />
-              </IconBtn>
-            </motion.div>
-          ))}
+            ))}
+          </motion.div>
+
+          {/* Device List */}
+          {devices.map((d) => {
+            const isRecent = (Date.now() - d.lastSeen) < 60 * 60 * 1000;
+            return (
+              <motion.div key={d.id} variants={fadeUp} className="ad-row hover:-translate-y-0.5 hover:shadow-md hover:border-primary/45 transition-all duration-300 group" style={{ transitionProperty: "transform, box-shadow, border-color" }}>
+                <span className="ad-row-ico group-hover:text-primary transition-colors">{devIcon(d.kind)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ad-row-name group-hover:text-primary transition-colors" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {d.name}
+                    {d.current && <Chip tone="ok" dot>this device</Chip>}
+                  </div>
+                  <div className="ad-row-desc tabular-nums flex items-center gap-1.5">
+                    <span className={`size-1.5 rounded-full ${isRecent ? "bg-emerald-500" : "bg-zinc-500"}`} />
+                    Last active {timeAgo(d.lastSeen)} · passkey
+                  </div>
+                </div>
+                <IconBtn aria-label={`revoke ${d.name}`} disabled={d.current} title={d.current ? "Can't revoke the current device" : "Revoke"} onClick={() => revokeDevice(d.id)} style={d.current ? { opacity: .4, cursor: "not-allowed" } : undefined}>
+                  <Trash2 />
+                </IconBtn>
+              </motion.div>
+            );
+          })}
         </motion.div>
       </div>
     </>
@@ -761,10 +1014,10 @@ export function SettingsPage({ onReopenWizard }: { onReopenWizard: () => void })
       <PageHeader title="Settings" subtitle="Enforcement, license, and how Aegis reaches you." />
       <div className="ad-scroll">
         <motion.div className="ad-stack" style={{ maxWidth: 720 }} variants={stagger} initial="hidden" animate="visible">
-          <motion.section variants={fadeUp} className="ad-card pad">
-            <div className="ad-section-title"><ShieldCheck size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Enforcement</div>
+          <motion.section variants={fadeUp} className="ad-card pad hover:-translate-y-0.5 hover:shadow-md hover:border-primary/45 transition-all duration-300 group" style={{ transitionProperty: "transform, box-shadow, border-color" }}>
+            <div className="ad-section-title group-hover:text-primary transition-colors"><ShieldCheck size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Enforcement</div>
             <div className="ad-section-sub">When on, every action is checked against its mandate before it runs.</div>
-            <div className="ad-row" style={{ background: "transparent", border: "1px solid var(--d-line)" }}>
+            <div className="ad-row hover:border-primary/30 transition-all duration-200" style={{ background: "transparent", border: "1px solid var(--d-line)" }}>
               <div style={{ flex: 1 }}>
                 <div className="ad-row-name">Global enforcement</div>
                 <div className="ad-row-desc">{settings.enforcement ? "Active — policies are enforced." : "Off — testing mode, nothing is blocked."}</div>
@@ -773,33 +1026,608 @@ export function SettingsPage({ onReopenWizard }: { onReopenWizard: () => void })
             </div>
             <div style={{ marginTop: 14 }}>
               <label className="ad-field-label">Step-up threshold (USD)</label>
-              <input className="ad-input" type="number" value={settings.stepUpThreshold} onChange={(e) => updateSettings({ stepUpThreshold: Number(e.target.value) || 0 })} style={{ maxWidth: 200 }} />
+              <input className="ad-input active:scale-[0.99] transition-transform duration-100" type="number" value={settings.stepUpThreshold} onChange={(e) => updateSettings({ stepUpThreshold: Number(e.target.value) || 0 })} style={{ maxWidth: 200 }} />
             </div>
           </motion.section>
 
-          <motion.section variants={fadeUp} className="ad-card pad">
-            <div className="ad-section-title"><KeyRound size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />License</div>
+          <motion.section variants={fadeUp} className="ad-card pad hover:-translate-y-0.5 hover:shadow-md hover:border-primary/45 transition-all duration-300 group" style={{ transitionProperty: "transform, box-shadow, border-color" }}>
+            <div className="ad-section-title group-hover:text-primary transition-colors"><KeyRound size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />License</div>
             <div className="ad-section-sub">Activate a key to enable enforcement in production.</div>
             <div style={{ display: "flex", gap: 8 }}>
-              <input className="ad-input" placeholder="paste your license key" value={key} onChange={(e) => setKey(e.target.value)} />
+              <input className="ad-input active:scale-[0.99] transition-transform duration-100" placeholder="paste your license key" value={key} onChange={(e) => setKey(e.target.value)} />
               <Btn variant="primary" disabled={!key.trim()} onClick={() => { updateSettings({ licenseKey: key.trim() }); toast("License activated", "ok"); }}>Activate</Btn>
             </div>
           </motion.section>
 
-          <motion.section variants={fadeUp} className="ad-card pad">
-            <div className="ad-section-title"><Server size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Backend API</div>
+          <motion.section variants={fadeUp} className="ad-card pad hover:-translate-y-0.5 hover:shadow-md hover:border-primary/45 transition-all duration-300 group" style={{ transitionProperty: "transform, box-shadow, border-color" }}>
+            <div className="ad-section-title group-hover:text-primary transition-colors"><Server size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Backend API</div>
             <div className="ad-section-sub">Where the dashboard reaches your control plane.</div>
             <div style={{ display: "flex", gap: 8 }}>
-              <input className="ad-input mono" value={api} onChange={(e) => setApi(e.target.value)} />
+              <input className="ad-input mono active:scale-[0.99] transition-transform duration-100" value={api} onChange={(e) => setApi(e.target.value)} />
               <Btn variant="ghost" onClick={() => { updateSettings({ apiUrl: api }); toast("Endpoint saved", "ok"); }}>Save</Btn>
             </div>
           </motion.section>
 
-          <motion.section variants={fadeUp} className="ad-card pad">
-            <div className="ad-section-title"><Settings size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Setup</div>
+          <motion.section variants={fadeUp} className="ad-card pad hover:-translate-y-0.5 hover:shadow-md hover:border-primary/45 transition-all duration-300 group" style={{ transitionProperty: "transform, box-shadow, border-color" }}>
+            <div className="ad-section-title group-hover:text-primary transition-colors"><Settings size={15} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />Setup</div>
             <div className="ad-section-sub">Re-run the guided setup wizard.</div>
             <Btn variant="ghost" icon={<Settings size={15} />} onClick={onReopenWizard}>Open setup wizard</Btn>
           </motion.section>
+        </motion.div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
+  const { approvals, ledger, toast } = useStore();
+  const [read, setRead] = useState<Set<string>>(new Set());
+
+  const notifications = useMemo(() => {
+    const items: {
+      id: string;
+      title: string;
+      body: string;
+      tone: "ok" | "warn" | "bad" | "info";
+      time: number;
+      category: string;
+    }[] = [];
+
+    // Approvals as urgent notifications
+    approvals.forEach(a => {
+      items.push({
+        id: `apr-${a.id}`,
+        title: `Step-up required: ${a.title}`,
+        body: `${a.agent} is awaiting your approval.`,
+        tone: "warn",
+        time: a.createdAt,
+        category: "Approval",
+      });
+    });
+
+    // Recent ledger denies as alerts
+    [...ledger].reverse().filter(e => e.verdict === "DENY").slice(0, 3).forEach(e => {
+      items.push({
+        id: `deny-${e.seq}`,
+        title: `Action denied: ${e.action}`,
+        body: `${e.agent} was blocked by policy.`,
+        tone: "bad",
+        time: e.ts,
+        category: "Alert",
+      });
+    });
+
+    // Recent step-ups
+    [...ledger].reverse().filter(e => e.verdict === "STEP_UP").slice(0, 2).forEach(e => {
+      items.push({
+        id: `stepup-${e.seq}`,
+        title: `Step-up flagged: ${e.action}`,
+        body: `${e.agent} triggered a step-up policy.`,
+        tone: "info",
+        time: e.ts,
+        category: "Policy",
+      });
+    });
+
+    // System info
+    items.push({
+      id: "sys-1",
+      title: "Enforcement active",
+      body: "All policies are enforced globally.",
+      tone: "ok",
+      time: Date.now() - 3600000,
+      category: "System",
+    });
+    items.push({
+      id: "sys-2",
+      title: "Ledger chain verified",
+      body: "Hash chain integrity check passed.",
+      tone: "ok",
+      time: Date.now() - 7200000,
+      category: "System",
+    });
+
+    return items.sort((a, b) => b.time - a.time);
+  }, [approvals, ledger]);
+
+  const unreadCount = notifications.filter(n => !read.has(n.id)).length;
+
+  return (
+    <>
+      <PageHeader
+        title="Notifications"
+        subtitle="Approvals, policy alerts, and system events."
+        actions={
+          <>
+            {unreadCount > 0 && (
+              <button
+                className="ad-btn ad-btn-ghost sm active:scale-[0.97] transition-transform duration-100"
+                onClick={() => setRead(new Set(notifications.map(n => n.id)))}
+              >
+                Mark all read
+              </button>
+            )}
+            <button
+              className="ad-btn ad-btn-subtle sm active:scale-[0.97] transition-transform duration-100 flex items-center gap-1.5"
+              onClick={() => {
+                setRead(new Set(notifications.map(n => n.id)));
+                toast("All notifications cleared", "ok");
+              }}
+            >
+              <X size={13} /> Clear all
+            </button>
+          </>
+        }
+      />
+      <div className="ad-scroll overflow-y-auto flex-1 p-6">
+        <motion.div
+          className="flex flex-col gap-3 max-w-2xl"
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+        >
+          {notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
+              <div className="size-12 rounded-2xl border border-border bg-muted/40 flex items-center justify-center">
+                <Bell size={22} className="opacity-30" />
+              </div>
+              <span className="text-sm font-medium">All caught up</span>
+              <span className="text-xs">No notifications right now.</span>
+            </div>
+          ) : (
+            notifications.map(n => {
+              const isRead = read.has(n.id);
+              const toneClass =
+                n.tone === "bad"
+                  ? "border-l-red-500 bg-red-500/5"
+                  : n.tone === "warn"
+                  ? "border-l-amber-500 bg-amber-500/5"
+                  : n.tone === "info"
+                  ? "border-l-blue-500 bg-blue-500/5"
+                  : "border-l-emerald-500 bg-emerald-500/5";
+
+              return (
+                <motion.div
+                  key={n.id}
+                  variants={fadeUp}
+                  className={`flex gap-4 p-4 rounded-lg border border-border border-l-4 cursor-pointer transition-all duration-200 hover:shadow-sm ${toneClass} ${isRead ? "opacity-60" : ""}`}
+                  onClick={() => setRead(r => new Set([...r, n.id]))}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        {!isRead && <span className="size-1.5 rounded-full bg-blue-500 shrink-0 mt-1" />}
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {n.category}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                        {timeAgo(n.time)}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-card-foreground mt-1">{n.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
+                    {n.category === "Approval" && (
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          className="text-[11px] font-semibold px-3 py-1 rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                          onClick={e => {
+                            e.stopPropagation();
+                            onNav("inbox");
+                          }}
+                        >
+                          Review in Inbox
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </motion.div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// Profile
+// ============================================================
+export function ProfilePage() {
+  const { devices, toast } = useStore();
+  const currentDevice = devices.find(d => d.current);
+  const [displayName, setDisplayName] = useState("Operator");
+  const [email, setEmail] = useState("operator@aegis.local");
+  const [editingName, setEditingName] = useState(false);
+
+  return (
+    <>
+      <PageHeader title="Profile" subtitle="Your identity, session, and security settings." />
+      <div className="ad-scroll overflow-y-auto flex-1 p-6">
+        <motion.div
+          className="flex flex-col gap-6 max-w-2xl"
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* Avatar + Identity */}
+          <motion.div variants={fadeUp} className="ad-card pad flex items-center gap-6">
+            <div className="relative">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"
+                className="size-20 rounded-2xl border-2 border-border object-cover"
+                alt="Profile"
+              />
+              <button
+                className="absolute -bottom-1 -right-1 size-6 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                onClick={() => toast("Avatar upload coming soon", "info")}
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                {editingName ? (
+                  <input
+                    autoFocus
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    onBlur={() => {
+                      setEditingName(false);
+                      toast("Display name saved", "ok");
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        setEditingName(false);
+                        toast("Display name saved", "ok");
+                      }
+                    }}
+                    className="ad-input text-lg font-semibold py-0.5 h-auto"
+                    style={{ maxWidth: 200 }}
+                  />
+                ) : (
+                  <h2 className="text-xl font-bold">{displayName}</h2>
+                )}
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Settings size={13} />
+                </button>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">Operator · Aegis Control Plane</div>
+              <div className="font-mono text-[10px] text-muted-foreground mt-2 bg-muted/40 px-2 py-1 rounded-md border border-border inline-block">
+                did:key:z6MkvS…W8X23b
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Contact */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title">
+              <Settings size={14} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />
+              Contact &amp; notifications
+            </div>
+            <div className="ad-section-sub">Where Aegis sends approval requests and alerts.</div>
+            <div className="mt-4 flex flex-col gap-3">
+              <div>
+                <label className="ad-field-label">Email address</label>
+                <div className="flex gap-2">
+                  <input
+                    className="ad-input flex-1"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                  />
+                  <Btn variant="ghost" onClick={() => toast("Email saved", "ok")}>Save</Btn>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Session */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title">
+              <ShieldCheck size={14} style={{ verticalAlign: -2, marginRight: 6, color: "var(--d-crimson)" }} />
+              Active session
+            </div>
+            <div className="ad-section-sub">You are signed in on this device.</div>
+            {currentDevice && (
+              <div className="mt-4 ad-row" style={{ background: "transparent", border: "1px solid var(--d-line)" }}>
+                <span className="ad-row-ico">{devIcon(currentDevice.kind)}</span>
+                <div className="flex-1">
+                  <div className="ad-row-name">
+                    {currentDevice.name} <Chip tone="ok" dot>current</Chip>
+                  </div>
+                  <div className="ad-row-desc">Last active {timeAgo(currentDevice.lastSeen)} · passkey</div>
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Danger zone */}
+          <motion.div variants={fadeUp} className="ad-card pad" style={{ borderColor: "rgba(239,68,68,0.2)" }}>
+            <div className="ad-section-title" style={{ color: "rgb(239,68,68)" }}>
+              <AlertTriangle size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+              Danger zone
+            </div>
+            <div className="ad-section-sub">These actions are permanent and cannot be undone.</div>
+            <div className="mt-4">
+              <Btn
+                variant="ghost"
+                onClick={() => toast("All sessions revoked", "bad")}
+                style={{ color: "var(--d-bad)", borderColor: "var(--d-bad)", border: "1px solid" }}
+              >
+                Revoke all sessions
+              </Btn>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// Support
+// ============================================================
+export function SupportPage() {
+  const { toast } = useStore();
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [faqOpen, setFaqOpen] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      q: "How does passkey signing work?",
+      a: "When you approve an action, Aegis uses the WebAuthn API to sign the decision with your device's passkey. Your private key never leaves the device.",
+    },
+    {
+      q: "What is a mandate?",
+      a: "A mandate is a signed policy document that defines what an agent is allowed to do. Each mandate has a spend limit, an allowlist of actions, and an optional step-up threshold.",
+    },
+    {
+      q: "What happens when enforcement is off?",
+      a: "Policies are still evaluated but not enforced. Agents can run unrestricted. This mode is for testing only.",
+    },
+    {
+      q: "How do I revoke an agent?",
+      a: "Go to Governance, find the agent card, and click Revoke. This immediately removes all active sessions for that agent.",
+    },
+    {
+      q: "Can I export the audit log?",
+      a: "Yes. Go to History and click the Export button. The full ledger is exported as a JSON file with hash-chain proofs.",
+    },
+  ];
+
+  return (
+    <>
+      <PageHeader title="Support" subtitle="Documentation, FAQ, and contact." />
+      <div className="ad-scroll overflow-y-auto flex-1 p-6">
+        <motion.div
+          className="flex flex-col gap-6 max-w-2xl"
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* Status */}
+          <motion.div
+            variants={fadeUp}
+            className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20"
+          >
+            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+              All systems operational
+            </span>
+            <a
+              href="#"
+              className="ml-auto text-xs text-muted-foreground hover:text-foreground underline transition-colors"
+              onClick={e => {
+                e.preventDefault();
+                toast("Opening status page", "info");
+              }}
+            >
+              Status page →
+            </a>
+          </motion.div>
+
+          {/* Quick links */}
+          <motion.div variants={fadeUp} className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Documentation", icon: "📖", desc: "Guides, API reference", action: () => toast("Opening docs", "info") },
+              { label: "Discord", icon: "💬", desc: "Community & help", action: () => toast("Opening Discord", "info") },
+              { label: "GitHub Issues", icon: "🐙", desc: "Bug reports", action: () => toast("Opening GitHub", "info") },
+            ].map(link => (
+              <button
+                key={link.label}
+                onClick={link.action}
+                className="ad-card pad text-left hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 flex flex-col gap-2"
+              >
+                <span className="text-2xl">{link.icon}</span>
+                <span className="text-sm font-semibold">{link.label}</span>
+                <span className="text-xs text-muted-foreground">{link.desc}</span>
+              </button>
+            ))}
+          </motion.div>
+
+          {/* FAQ */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title">Frequently Asked Questions</div>
+            <div className="flex flex-col divide-y divide-border">
+              {faqs.map((faq, i) => (
+                <div key={i}>
+                  <button
+                    className="flex items-center justify-between w-full py-3 text-sm font-medium text-left hover:text-foreground transition-colors"
+                    onClick={() => setFaqOpen(faqOpen === i ? null : i)}
+                  >
+                    <span>{faq.q}</span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-muted-foreground transition-transform duration-200 ${faqOpen === i ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {faqOpen === i && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="text-xs text-muted-foreground pb-3 leading-relaxed"
+                    >
+                      {faq.a}
+                    </motion.div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Contact form */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title">Contact support</div>
+            <div className="ad-section-sub">We respond within 24 hours on business days.</div>
+            <div className="mt-4 flex flex-col gap-3">
+              <div>
+                <label className="ad-field-label">Subject</label>
+                <input
+                  className="ad-input"
+                  placeholder="What can we help with?"
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="ad-field-label">Message</label>
+                <textarea
+                  className="ad-input"
+                  rows={4}
+                  style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }}
+                  placeholder="Describe your issue…"
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                />
+              </div>
+              <Btn
+                variant="primary"
+                onClick={() => {
+                  if (subject && message) {
+                    toast("Message sent — we'll reply within 24h", "ok");
+                    setSubject("");
+                    setMessage("");
+                  } else {
+                    toast("Fill in subject and message first", "info");
+                  }
+                }}
+              >
+                Send message
+              </Btn>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// Help & Shortcuts
+// ============================================================
+export function HelpPage() {
+  const shortcuts = [
+    { keys: ["⌘", "K"], desc: "Open command palette / search" },
+    { keys: ["G", "D"], desc: "Go to Dashboard" },
+    { keys: ["G", "I"], desc: "Go to Inbox" },
+    { keys: ["G", "G"], desc: "Go to Governance" },
+    { keys: ["G", "H"], desc: "Go to History" },
+    { keys: ["G", "S"], desc: "Go to Settings" },
+    { keys: ["Esc"], desc: "Close modal or overlay" },
+    { keys: ["A"], desc: "Approve selected request" },
+    { keys: ["D"], desc: "Deny selected request" },
+  ];
+
+  const checklist = [
+    { done: true, label: "Connect your first agent" },
+    { done: true, label: "Create a mandate" },
+    { done: false, label: "Link a passkey device" },
+    { done: false, label: "Set spend limits" },
+    { done: false, label: "Enable global enforcement" },
+    { done: false, label: "Invite a team member" },
+  ];
+
+  return (
+    <>
+      <PageHeader title="Help & Shortcuts" subtitle="Keyboard shortcuts, getting started, and quick tips." />
+      <div className="ad-scroll overflow-y-auto flex-1 p-6">
+        <motion.div
+          className="flex flex-col gap-6 max-w-2xl"
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* Getting started */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title">Getting started checklist</div>
+            <div className="flex flex-col gap-2 mt-4">
+              {checklist.map((item, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center gap-3 text-sm ${item.done ? "text-muted-foreground" : "text-card-foreground"}`}
+                >
+                  <span
+                    className={`size-5 rounded-full flex items-center justify-center text-[11px] border ${item.done ? "bg-emerald-500 border-emerald-500 text-white" : "border-border bg-transparent"}`}
+                  >
+                    {item.done ? "✓" : ""}
+                  </span>
+                  <span className={item.done ? "line-through" : ""}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Keyboard shortcuts */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title">Keyboard shortcuts</div>
+            <div className="flex flex-col gap-1 mt-4">
+              {shortcuts.map((s, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <span className="text-sm text-muted-foreground">{s.desc}</span>
+                  <div className="flex gap-1">
+                    {s.keys.map(k => (
+                      <kbd
+                        key={k}
+                        className="px-2 py-0.5 text-[11px] font-mono border border-border bg-muted rounded-md text-foreground"
+                      >
+                        {k}
+                      </kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Tips */}
+          <motion.div variants={fadeUp} className="ad-card pad">
+            <div className="ad-section-title">Quick tips</div>
+            <ul className="flex flex-col gap-2 mt-3">
+              {[
+                "Click the ledger hash in History to view the full hash-chain proof.",
+                "Mandate chips in Governance are clickable — they show the full policy YAML.",
+                "The countdown ring in Inbox shows how long until the request auto-expires.",
+                "Use ⌘K to search across agents, actions, and pages instantly.",
+              ].map((tip, i) => (
+                <li key={i} className="flex gap-3 text-xs text-muted-foreground">
+                  <span className="size-4 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
         </motion.div>
       </div>
     </>

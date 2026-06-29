@@ -930,7 +930,7 @@ function App() {
 <a 
   ref={ctaRef}
   className="btn-cta-primary" 
-  href="#cta"
+  href="#/app/dashboard"
   onMouseEnter={() => { isCtaHoveredRef.current = true; }}
   onMouseLeave={() => {
     isCtaHoveredRef.current = false;
@@ -1958,7 +1958,7 @@ function App() {
 <li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Hash-chained audit ledger</span></li>
 <li style={{display: "flex", gap: "10px", fontSize: "14px", color: "var(--muted)", lineHeight: "1.5"}}><span style={{flex: "none", marginTop: "1px"}}><svg fill="none" height="15" viewBox="0 0 24 24" width="15"><path d="M5 12.5l4 4 10-10.5" stroke="var(--crimson)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></span><span>Direct line to the founders</span></li>
 </ul>
-<a className="btn btn-crimson btn-cta-new" href="#cta" style={{justifyContent: "center"}}>Get beta access</a>
+<a className="btn btn-crimson btn-cta-new" href="#/app/dashboard" style={{justifyContent: "center"}}>Get beta access</a>
 <p style={{margin: "14px 0 0", textAlign: "center", fontSize: "12.5px", color: "var(--faint)"}}>No credit card. Cancel anytime. Your data stays yours.</p>
 </div>
 {/* What happens at GA */}
@@ -2039,7 +2039,7 @@ function App() {
       </p>
 <form className="cta-form-new" onSubmit={onSubmit}>
 <input aria-label="Email address" className="cta-input-new" id="cta-email" name="email" placeholder="you@company.com" required type="email"/>
-<button className="btn btn-crimson btn-cta-new" type="submit">Get beta access</button>
+<button className="btn btn-crimson btn-cta-new" type="submit" onClick={() => { setTimeout(() => { window.location.hash = '/app/dashboard'; }, 400); }}>Get beta access</button>
 </form>
 <p className="cta-footer-note">The human stays accountable. The agent gets its own identity.</p>
 </div>

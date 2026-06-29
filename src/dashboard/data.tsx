@@ -126,6 +126,47 @@ const seedAgents: Agent[] = [
       { id: "m6", label: "comms-only", detail: "email + sms, no payments", active: true },
     ],
   },
+  {
+    id: "ag_finance",
+    name: "Finance Agent",
+    did: "did:key:z6MkuY…Lm84fa",
+    status: "active",
+    enforcement: true,
+    spendUsed: 140.0,
+    spendLimit: 300,
+    tasks: 512,
+    mandates: [
+      { id: "m7", label: "billing-sync", detail: "read stripe + sync to quickbooks", active: true },
+      { id: "m8", label: "pay-invoices", detail: "invoice processing ≤ $300", active: true },
+    ],
+  },
+  {
+    id: "ag_security",
+    name: "Security Enforcer",
+    did: "did:key:z6MkvW…Ab12cd",
+    status: "active",
+    enforcement: true,
+    spendUsed: 20.0,
+    spendLimit: 50,
+    tasks: 4521,
+    mandates: [
+      { id: "m9", label: "audit-logs-signing", detail: "sign and push logs hourly", active: true },
+      { id: "m10", label: "ip-blocklist", detail: "update firewall rules dynamically", active: true },
+    ],
+  },
+  {
+    id: "ag_customer",
+    name: "Customer Care",
+    did: "did:key:z6MkpX…Yz89fg",
+    status: "paused",
+    enforcement: false,
+    spendUsed: 0,
+    spendLimit: 200,
+    tasks: 92,
+    mandates: [
+      { id: "m11", label: "zendesk-read-only", detail: "fetch tickets, no modify", active: true },
+    ],
+  },
 ];
 
 const seedApprovals: Approval[] = [
@@ -205,6 +246,9 @@ const seedDevices: Device[] = [
   { id: "d1", name: "MacBook Pro · operator", kind: "laptop", lastSeen: mins(2), current: true },
   { id: "d2", name: "iPhone 16 · approvals", kind: "phone", lastSeen: mins(40), current: false },
   { id: "d3", name: "YubiKey 5C", kind: "security-key", lastSeen: mins(60 * 26), current: false },
+  { id: "d4", name: "iPad Pro · reviews", kind: "phone", lastSeen: mins(60 * 3), current: false },
+  { id: "d5", name: "Dell XPS 15 · secondary", kind: "laptop", lastSeen: mins(60 * 48), current: false },
+  { id: "d6", name: "YubiKey 5 NFC", kind: "security-key", lastSeen: mins(60 * 72), current: false },
 ];
 
 // ============================================================

@@ -23,7 +23,7 @@ export function Btn({
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className={`ad-btn ad-btn-${variant}${sm ? " sm" : ""}${block ? " block" : ""}`}
+      className={`ad-btn ad-btn-${variant}${sm ? " sm" : ""}${block ? " block" : ""} active:scale-[0.97] transition-transform duration-100`}
       {...rest}
     >
       {icon}
@@ -37,7 +37,7 @@ export function IconBtn({
   ...rest
 }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button className="ad-iconbtn" {...rest}>
+    <button className="ad-iconbtn active:scale-[0.95] transition-transform duration-100" {...rest}>
       {children}
     </button>
   );
@@ -56,7 +56,7 @@ export function Chip({ tone = "muted", dot, children }: { tone?: ChipTone; dot?:
 export function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label?: string }) {
   return (
     <button
-      className={`ad-toggle${on ? " on" : ""}`}
+      className={`ad-toggle${on ? " on" : ""} active:scale-[0.93] transition-transform duration-100`}
       onClick={onClick}
       role="switch"
       aria-checked={on}
@@ -112,12 +112,12 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="ad-topbar">
-      <div>
-        <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
+    <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-6 py-3">
+      <div className="flex flex-col gap-0.5">
+        <h1 className="text-base font-semibold tracking-tight text-foreground">{title}</h1>
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       </div>
-      {actions && <div className="ad-topbar-actions">{actions}</div>}
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -222,31 +222,45 @@ export function InteractiveChart({
 
   return (
     <div className="ad-chart-wrap" ref={wrapRef} onMouseMove={onMouseMove} onMouseLeave={() => setHover(null)} style={{ height }}>
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ overflow: "visible" }}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.08" />
+            <stop offset="60%" stopColor={color} stopOpacity="0.01" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
         {points.length > 1 && (
           <>
             <path d={areaPath} fill={`url(#${gradId})`} />
-            {/* Glowing neon laser background blur path */}
-            <path d={linePath} fill="none" stroke={color} strokeWidth="5" opacity="0.22" strokeLinejoin="round" strokeLinecap="round" style={{ filter: "blur(2.5px)" }} />
-            {/* Main foreground path */}
-            <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            {/* Main foreground path with crisp, delicate line */}
+            <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
           </>
+        )}
+        {/* Active pulsing end dot when idle */}
+        {!hover && points.length > 0 && (
+          <circle
+            cx={points[points.length - 1].x}
+            cy={points[points.length - 1].y}
+            r="3.5"
+            fill={color}
+            stroke="var(--d-panel)"
+            strokeWidth="1.5"
+            style={{
+              transformOrigin: `${points[points.length - 1].x}px ${points[points.length - 1].y}px`,
+              animation: "chart-pulse 2s infinite ease-in-out"
+            }}
+          />
         )}
         {hover && (
           <circle
             className="ad-chart-dot visible"
             cx={points.find((p) => p.label === hover.point.label)?.x}
             cy={points.find((p) => p.label === hover.point.label)?.y}
-            r="4"
+            r="3.5"
             fill={color}
             stroke="var(--d-panel)"
-            strokeWidth="2"
+            strokeWidth="1.5"
           />
         )}
       </svg>
@@ -525,8 +539,26 @@ export function BiometricOverlay({ onComplete }: { onComplete: () => void }) {
         <AnimatePresence mode="wait">
           {phase === "scanning" ? (
             <motion.div key="scan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-              <div className="ad-bio-fingerprint">
-                <Fingerprint size={28} />
+              <div className="ad-bio-fingerprint" style={{ position: "relative" }}>
+                {/* Expanding pulsing concentric wave rings */}
+                <div style={{
+                  position: "absolute",
+                  inset: -6,
+                  borderRadius: "50%",
+                  border: "1.5px solid var(--d-crimson)",
+                  opacity: 0.22,
+                  animation: "ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite"
+                }} style-id="wave1" />
+                <div style={{
+                  position: "absolute",
+                  inset: -14,
+                  borderRadius: "50%",
+                  border: "1.5px solid var(--d-crimson)",
+                  opacity: 0.12,
+                  animation: "ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite",
+                  animationDelay: "350ms"
+                }} style-id="wave2" />
+                <Fingerprint size={28} className="animate-pulse" />
               </div>
               <div style={{ fontWeight: 650, fontSize: 15, color: "var(--d-ink)" }}>Verifying identity</div>
               <div style={{ fontSize: 13, color: "var(--d-muted)" }}>Authenticating with device passkey…</div>
@@ -538,7 +570,17 @@ export function BiometricOverlay({ onComplete }: { onComplete: () => void }) {
                 initial={{ scale: 0.25, opacity: 0, rotate: 80, filter: "blur(8px)" }}
                 animate={{ scale: 1, opacity: 1, rotate: 0, filter: "blur(0px)" }}
                 transition={{ duration: 0.5, ease: [0.34, 1.35, 0.64, 1] }}
+                style={{ position: "relative" }}
               >
+                {/* Success flash ring */}
+                <div style={{
+                  position: "absolute",
+                  inset: -10,
+                  borderRadius: "50%",
+                  border: "2px solid var(--d-ok)",
+                  opacity: 0,
+                  animation: "ping 0.8s cubic-bezier(0, 0, 0.2, 1) 1"
+                }} style-id="success-wave" />
                 <Check size={28} />
               </motion.div>
               <div style={{ fontWeight: 650, fontSize: 15, color: "var(--d-ink)" }}>Approved</div>
