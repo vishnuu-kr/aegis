@@ -133,10 +133,10 @@
     --faint:        #a1a1aa; /* zinc-400 faint text */
     --line:         rgba(9, 9, 11, 0.07); /* clean zinc-based line */
     --line-soft:    rgba(9, 9, 11, 0.035);
-    --crimson:      #e11d48; /* rose-600 brand crimson */
-    --crimson-br:   #be123c; /* rose-700 deeper */
-    --crimson-deep: #9f1239; /* rose-800 darkest */
-    --crimson-tint: rgba(225, 29, 72, 0.06);
+    --crimson:      #09090b; /* monochrome black accent */
+    --crimson-br:   #27272a; /* monochrome dark gray */
+    --crimson-deep: #000000; /* monochrome pure black */
+    --crimson-tint: rgba(9, 9, 11, 0.045);
     --ok:           #15803D; /* forest green — real semantic color */
     --info:         #1D4ED8; /* sapphire blue */
     --warn:         #B45309; /* burnt amber */
@@ -1654,10 +1654,10 @@
     --faint:        #71717a; /* zinc-500 faint text */
     --line:         rgba(244, 244, 245, 0.08); /* clean zinc-based line */
     --line-soft:    rgba(244, 244, 245, 0.04);
-    --crimson:      #fb7185; /* rose-400 bright on dark */
-    --crimson-br:   #f43f5e; /* rose-500 mid */
-    --crimson-deep: #e11d48; /* rose-600 deeper */
-    --crimson-tint: rgba(251, 113, 133, 0.08);
+    --crimson:      #fafafa; /* monochrome white accent */
+    --crimson-br:   #f4f4f5; /* monochrome light gray */
+    --crimson-deep: #ffffff; /* monochrome pure white */
+    --crimson-tint: rgba(244, 244, 245, 0.08);
     --ok:           #22C55E; /* vivid green on dark */
     --info:         #60A5FA; /* bright blue on dark */
     --warn:         #F59E0B; /* amber on dark */

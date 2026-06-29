@@ -16,8 +16,8 @@
   --d-ink: var(--foreground);
   --d-muted: var(--muted-foreground);
   --d-faint: color-mix(in srgb, var(--muted-foreground) 78%, transparent);
-  --d-crimson: #e11d48; /* rose-600 - brand crimson */
-  --d-crimson-2: #be123c; /* rose-700 */
+  --d-crimson: var(--primary);
+  --d-crimson-2: var(--primary);
   --d-ok: var(--ok);
   --d-warn: var(--warn);
   --d-bad: var(--bad);

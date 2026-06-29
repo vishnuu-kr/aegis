@@ -43,7 +43,7 @@ const SPEND_TREND = [
 ];
 
 const spendChartConfig = {
-  spend: { label: "Spend", color: "#e11d48" },
+  spend: { label: "Spend", color: "var(--crimson)" },
 } satisfies ChartConfig;
 
 function SpendTrendChart() {
