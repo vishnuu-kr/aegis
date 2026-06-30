@@ -2100,6 +2100,12 @@
   }
   @media (max-width: 720px) {
     .hero-copy-panel { padding: 28px 20px 24px; border-radius: var(--radius-xl); }
+    /* Allow hero headline to wrap on mobile so the rotating-word pill
+       doesn't push the page into horizontal overflow at <=375px viewports. */
+    .hero-copy h1 span[style*="white-space: nowrap"],
+    .hero-copy h1 span[style*="whiteSpace: nowrap"] {
+      white-space: normal !important;
+    }
   }
 
   /* Subtle organic drift — tighter, slower, less "AI blob screensaver" */
@@ -2492,11 +2498,11 @@
   .footer-brand-tagline {
     font-size: 15px;
     line-height: 1.6;
-    color: var(--muted);
+    color: var(--ink-soft);
     margin: 16px 0 0;
   }
   [data-theme="dark"] .footer-brand-tagline {
-    color: var(--faint);
+    color: var(--muted);
   }
   
   .footer-newsletter-col {
@@ -2601,13 +2607,12 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     letter-spacing: 1.5px;
-    color: var(--faint);
+    color: var(--muted);
     margin-top: 8px;
     text-transform: uppercase;
-    opacity: 0.8;
   }
   [data-theme="dark"] .footer-newsletter-terms {
-    color: rgba(255, 255, 255, 0.55);
+    color: var(--muted);
   }
 
   .footer-columns-row {

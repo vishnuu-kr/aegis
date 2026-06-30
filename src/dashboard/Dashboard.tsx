@@ -99,6 +99,7 @@ function SearchModal({ open, onClose, nav, ledger }: {
 
   // Reset query when modal opens
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setQ("");
   }, [open]);
 
