@@ -420,6 +420,7 @@ function Shell() {
 
   return (
     <div className="aeg-dash">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <SidebarProvider className={cn("flex-1", "[--app-wrapper-max-width:80rem]", "[--app-header-height:3rem]")}>
         <AegisSidebar route={route} onOpenWizard={() => setWizardOpen(true)} dark={dark} toggleTheme={toggleTheme} />
         <SidebarInset className="min-h-0 bg-muted dark:bg-background">
@@ -430,7 +431,7 @@ function Shell() {
             toggleTheme={toggleTheme}
             onOpenSearch={() => setSearchOpen(true)}
           />
-          <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <main id="main-content" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <AnimatePresence mode="wait">
               <motion.div
                 key={route}
