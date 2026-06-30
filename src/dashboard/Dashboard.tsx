@@ -203,7 +203,6 @@ function AegisSidebar({ route, onOpenWizard, dark, toggleTheme }: {
             src={dark ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"}
             alt="AgentTag"
             className="h-5 w-auto"
-            style={{ filter: dark ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }}
           />
           <span className="font-semibold tracking-tight group-data-[collapsible=icon]:hidden">AgentTag</span>
         </a>
