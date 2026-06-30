@@ -241,7 +241,7 @@ function AegisSidebar({ route, onOpenWizard, dark, toggleTheme }: {
       </SidebarContent>
 
       <SidebarFooter className="gap-2 px-3 pb-3 group-data-[collapsible=icon]:px-1.5">
-        <Button variant="outline" size="sm" className="w-full justify-center gap-2 ad-theme-toggle rounded-lg font-medium shadow-xs transition-transform active:scale-[0.96] group-data-[collapsible=icon]:hidden" onClick={toggleTheme}>
+        <Button variant="outline" size="sm" className="ad-topbar-btn ad-theme-toggle w-full justify-center gap-2 rounded-lg font-medium shadow-xs group-data-[collapsible=icon]:hidden" onClick={toggleTheme}>
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.span
               key={dark ? "sun" : "moon"}
@@ -317,7 +317,7 @@ function AegisHeader({
   return (
     <header className="sticky top-0 z-30 flex h-(--app-header-height,3rem) w-full shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-4 md:px-6 relative">
       <div className="flex items-center gap-3">
-        <SidebarTrigger />
+        <SidebarTrigger className="ad-topbar-btn" />
         <Breadcrumb>
           <BreadcrumbList className="flex items-center gap-1 text-xs text-muted-foreground flex-row">
             <BreadcrumbItem>
@@ -335,7 +335,8 @@ function AegisHeader({
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="flex h-8 w-64 items-center justify-between rounded-lg border border-zinc-200/40 bg-zinc-50/50 px-3 text-xs text-muted-foreground hover:bg-zinc-100/50 dark:border-zinc-800/40 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80 transition-colors"
+          aria-label="Open search"
+          className="ad-topbar-btn flex h-8 w-64 items-center justify-between rounded-lg border border-zinc-200/40 bg-zinc-50/50 px-3 text-xs text-muted-foreground hover:bg-zinc-100/50 dark:border-zinc-800/40 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80 transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <Search size={13} />
@@ -352,6 +353,7 @@ function AegisHeader({
           size="icon-sm"
           variant="outline"
           aria-label="Help"
+          className="ad-topbar-btn"
           onClick={() => nav("help")}
         >
           <HelpCircle />
@@ -360,13 +362,18 @@ function AegisHeader({
         <Button
           size="icon-sm"
           variant="outline"
-          aria-label="Notifications"
-          className="relative"
+          aria-label={`Notifications${approvals.length > 0 ? `, ${approvals.length} unread` : ""}`}
+          className="ad-topbar-btn relative"
           onClick={() => nav("notifications")}
         >
-          <Bell />
+          <span className={`inline-flex ${approvals.length > 0 ? "ad-bell-shake" : ""}`} aria-hidden="true">
+            <Bell />
+          </span>
           {approvals.length > 0 && (
-            <span className="absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-white text-[9px] font-bold flex items-center justify-center">
+            <span
+              className="ad-bell-badge absolute -top-1 -right-1 size-4 rounded-full bg-destructive text-white text-[9px] font-bold flex items-center justify-center"
+              aria-hidden="true"
+            >
               {approvals.length}
             </span>
           )}
@@ -376,7 +383,8 @@ function AegisHeader({
 
         <button
           onClick={() => nav("profile")}
-          className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50 transition-transform hover:scale-105 active:scale-95"
+          aria-label="Open profile"
+          className="ad-topbar-btn rounded-full focus:outline-none focus-visible:[box-shadow:var(--shadow-focus)]"
         >
           <Avatar className="size-8">
             <AvatarImage src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&auto=format&fit=crop&q=80" alt="operator" />
@@ -426,10 +434,15 @@ function Shell() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={route}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
+                initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.998 }}
+                transition={{
+                  duration: 0.22,
+                  ease: [0.22, 1, 0.36, 1], // var(--ease-smooth-out)
+                  opacity: { duration: 0.18 },
+                  scale: { duration: 0.22 },
+                }}
                 className="flex h-full min-h-0 flex-1 flex-col"
               >
                 {route === "governance" && <GovernancePage />}

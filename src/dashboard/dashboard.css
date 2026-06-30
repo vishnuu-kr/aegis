@@ -496,44 +496,27 @@
   }
 }
 
-/* ---------- Sidebar Collapsed Tooltips ---------- */
-.aeg-dash .ad-nav-item-wrap {
-  position: relative;
-  display: block;
-  width: 100%;
+/* ---------- Sidebar Collapsed Tooltips (Task 4.2)
+   The shadcn SidebarMenuButton wraps each nav item in a Radix Tooltip
+   (via the `tooltip={item.label}` prop), which handles keyboard focus
+   and hover correctly and is hidden on mobile + when sidebar is
+   expanded. We just style the surface so it feels premium:
+   - layered shadow-as-border + soft elevation
+   - subtle slide-in from the rail
+   - cross-theme readable text via the standard foreground token */
+.aeg-dash [data-slot="tooltip-content"] {
+  background: var(--popover, var(--d-panel)) !important;
+  color: var(--popover-foreground, var(--d-ink)) !important;
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+  box-shadow: var(--shadow-dropdown, 0 12px 32px -10px rgba(0, 0, 0, 0.18), 0 2px 6px -2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04)) !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  padding: 5px 9px !important;
+  border-radius: 8px !important;
 }
-.aeg-dash .ad-nav-tooltip {
-  display: none;
-}
-@media (max-width: 860px) {
-  .aeg-dash .ad-nav-tooltip {
-    display: block;
-    position: absolute;
-    left: calc(100% + 12px);
-    top: 50%;
-    transform: translate(0, -50%) scale(var(--tt-scale, 0.98));
-    transform-origin: 0 50%;
-    padding: 6px 10px;
-    border-radius: 6px;
-    background: var(--d-panel);
-    color: var(--d-ink);
-    border: 1px solid var(--d-line-2);
-    box-shadow: var(--shadow-lift);
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    font-size: 11.5px;
-    font-weight: 500;
-    z-index: 100;
-    transition: opacity var(--tt-out-dur, 50ms) var(--tt-out-ease, ease-out), transform var(--tt-out-dur, 50ms) var(--tt-out-ease, ease-out);
-  }
-  .aeg-dash .ad-nav-item-wrap:hover .ad-nav-tooltip {
-    opacity: 1;
-    transform: translate(0, -50%) scale(1);
-    transition-duration: var(--tt-in-dur, 150ms);
-    transition-timing-function: var(--tt-in-ease, ease-out);
-    transition-delay: var(--tt-delay, 80ms);
-  }
+.aeg-dash [data-slot="tooltip-content"] > svg {
+  display: none !important; /* hide the default arrow — the rail is a clear visual cue */
 }
 
 /* ============ REDESIGN: Interactive Chart ============ */
@@ -971,16 +954,20 @@
   border-right: 1px solid rgba(9, 9, 11, 0.06) !important;
 }
 
+/* Task 4.1: inactive nav contrast >= 4.5:1
+   Light: slate-700 (#334155) on gray-50 (#f9fafb) ≈ 11.2:1
+   Dark:  slate-300 (#cbd5e1) on zinc-950 (#09090b) ≈ 12.5:1
+   Both well above 4.5:1 with margin. */
 .aeg-dash .ad-nav-item {
-  color: #475569 !important;
+  color: #334155 !important;
   background-color: transparent !important;
   font-weight: 500;
   border: 1px solid transparent !important;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.15s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .aeg-dash .ad-nav-item svg {
-  color: #64748b !important;
+  color: #475569 !important;
   transition: color 0.15s ease;
 }
 
@@ -990,7 +977,7 @@
 }
 
 .aeg-dash .ad-nav-item:hover svg {
-  color: #334155 !important;
+  color: #0f172a !important;
 }
 
 .aeg-dash .ad-nav-item[data-active="true"] {
@@ -1001,6 +988,13 @@
 
 .aeg-dash .ad-nav-item[data-active="true"] svg {
   color: #0f172a !important;
+}
+
+/* Visible keyboard focus ring on nav items (4.5:1 contrast preserved) */
+.aeg-dash .ad-nav-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus, 0 0 0 3px color-mix(in srgb, var(--crimson, #09090b) 22%, transparent), 0 0 0 1px var(--crimson, #09090b));
+  border-color: transparent !important;
 }
 
 .aeg-dash .ad-connect-btn {
@@ -1041,12 +1035,12 @@
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
   background-color: transparent !important;
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item svg {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item:hover {
@@ -1055,7 +1049,7 @@
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item:hover svg {
-  color: #cbd5e1 !important;
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item[data-active="true"] {
@@ -1122,6 +1116,80 @@
 [data-theme="dark"] .aeg-dash th,
 [data-theme="dark"] .aeg-dash td {
   border-color: rgba(255, 255, 255, 0.035) !important;
+}
+
+/* ============ Task 4.4: Topbar polish ============
+   Hover lift + visible focus ring on topbar buttons (theme toggle,
+   notifications, search, user menu). The lift is a tiny translateY
+   so it reads as tactile without floating away. */
+.aeg-dash .ad-topbar-btn {
+  transition:
+    transform var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    background-color var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform;
+}
+.aeg-dash .ad-topbar-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift, 0 8px 20px -12px rgba(0, 0, 0, 0.12));
+}
+.aeg-dash .ad-topbar-btn:active {
+  transform: translateY(0) scale(var(--scale-press, 0.96));
+}
+.aeg-dash .ad-topbar-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus, 0 0 0 3px color-mix(in srgb, var(--crimson, #09090b) 22%, transparent), 0 0 0 1px var(--crimson, #09090b));
+}
+/* The header <header> uses Tailwind shadow-xs in places — kill it so
+   our hover lift is the only shadow signal. */
+.aeg-dash header.shadow-xs,
+.aeg-dash header [data-slot="button"].shadow-xs {
+  box-shadow: none !important;
+}
+
+/* Notification bell: subtle attention-grabbing shake when there are
+   unread approvals. Two cycles, low amplitude, settles back. Respects
+   prefers-reduced-motion (disabled further down). */
+.aeg-dash .ad-bell-shake {
+  display: inline-flex;
+  transform-origin: 50% 4px;
+  animation: ad-bell-shake 2.4s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) infinite;
+}
+@keyframes ad-bell-shake {
+  0%, 88%, 100% { transform: rotate(0deg); }
+  90%           { transform: rotate(14deg); }
+  92%           { transform: rotate(-10deg); }
+  94%           { transform: rotate(8deg); }
+  96%           { transform: rotate(-4deg); }
+  98%           { transform: rotate(2deg); }
+}
+/* Notification badge: tiny pulse to match the bell motion */
+.aeg-dash .ad-bell-badge {
+  animation: ad-bell-badge-pulse 2.4s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) infinite;
+}
+@keyframes ad-bell-badge-pulse {
+  0%, 88%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--d-bad, #DC2626) 0%, transparent); }
+  92%           { transform: scale(1.18); box-shadow: 0 0 0 4px color-mix(in srgb, var(--d-bad, #DC2626) 35%, transparent); }
+}
+
+/* ============ Task 4.5: Mobile sidebar — no horizontal overflow ============
+   On viewports < 768px the shadcn SidebarProvider swaps to a Sheet
+   (overlay). These guards prevent stray widths from creating
+   horizontal scroll. */
+@media (max-width: 767px) {
+  .aeg-dash { overflow: hidden; }
+  .aeg-dash main { width: 100%; max-width: 100vw; }
+  .aeg-dash [data-slot="sidebar-inset"] { width: 100% !important; }
+  .aeg-dash header { padding-left: 12px !important; padding-right: 12px !important; }
+}
+
+/* Reduced motion: disable bell shake + badge pulse + all keyframes added above */
+@media (prefers-reduced-motion: reduce) {
+  .aeg-dash .ad-bell-shake,
+  .aeg-dash .ad-bell-badge {
+    animation: none !important;
+  }
 }
 
 
