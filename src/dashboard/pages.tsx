@@ -400,7 +400,7 @@ function StatCard({
       </div>
 
       <div className="h-10 w-full overflow-hidden opacity-60 dark:opacity-40 select-none pointer-events-none">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 320, height: 40 }}>
           <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
             <defs>
               <linearGradient id={`spark-grad-${label.replace(/\s+/g, "-")}`} x1="0" y1="0" x2="0" y2="1">
