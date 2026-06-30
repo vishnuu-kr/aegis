@@ -73,7 +73,7 @@ function MCPConsole() {
         i >= shown ? null : line === null ? (
           <div className="mcp-spacer" key={i}></div>
         ) : (
-          <div className={"mcp-cl term-line" + (i === 4 ? " cmt" : "")} key={i}>{line}</div>
+          <div className={"mcp-cl term-line font-tabular" + (i === 4 ? " cmt" : "")} key={i}>{line}</div>
         )
       )}
       {!typing && allShown && (
@@ -911,8 +911,8 @@ function App() {
   <canvas className="hero-dots" id="hero-canvas"></canvas>
 <header className="aeg-wrap" id="top" style={{paddingTop: "112px", paddingBottom: "96px", position: "relative", zIndex: "1"}}>
 <div style={{display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "48px", maxWidth: "800px", margin: "0 auto", width: "100%"}}>
-{/* CENTERED: copy */}
-<div className="hero-copy" style={{display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", maxWidth: "680px", margin: "0 auto", width: "100%"}}>
+{/* CENTERED: copy — wrapped in glass panel so hero text feels premium over the video */}
+<div className="hero-copy hero-copy-panel">
 <a className="pill-badge reveal" href="#cta" style={{marginBottom: "26px"}}>
 <span style={{position: "relative", display: "inline-flex", width: "8px", height: "8px"}}>
 <span style={{position: "absolute", inset: "0", borderRadius: "50%", background: "var(--ok)", animation: "aeg-ping 1.8s var(--ease) infinite"}}></span>
@@ -1756,7 +1756,7 @@ function App() {
 </div>
 <div className="mono z" style={{padding: "6px 0", fontSize: "13px", minHeight: "284px"}}>
 {ledgerRows.map((row, idx) => (
-<div key={row.seq ?? idx} className="row-led" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid var(--line)", animation: "aeg-rise .4s var(--ease)"}}>
+<div key={row.seq ?? idx} className="row-led font-tabular" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid var(--line)", animation: "aeg-rise .4s var(--ease)"}}>
 <span style={{color: "var(--faint)"}}>#{row.seq}</span>
 <span style={{color: "var(--muted)", fontSize: "11.5px"}}>{row.ev}</span>
 <span style={{color: "var(--ink-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{row.act}</span>
