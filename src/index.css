@@ -723,6 +723,21 @@
     opacity: .82; border-color: var(--line);
   }
 
+  /* ============ CARD LIFT UTILITY ============
+     Reusable hover lift: translateY(-1px) + --shadow-lift, animated with
+     --duration-fast + --ease-smooth-out. Compose on top of any card. */
+  .card-lift {
+    transition: transform var(--duration-fast) var(--ease-smooth-out),
+                box-shadow var(--duration-fast) var(--ease-smooth-out);
+  }
+  .card-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lift);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-lift, .card-lift:hover { transition: none; transform: none; }
+  }
+
   /* ============ SHIFT SECTION — premium banded before/after ============ */
   .shift-card {
     position: relative; overflow: hidden; display: flex; flex-direction: column;

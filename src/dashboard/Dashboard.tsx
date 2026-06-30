@@ -242,7 +242,18 @@ function AegisSidebar({ route, onOpenWizard, dark, toggleTheme }: {
 
       <SidebarFooter className="gap-2 px-3 pb-3 group-data-[collapsible=icon]:px-1.5">
         <Button variant="outline" size="sm" className="w-full justify-center gap-2 ad-theme-toggle rounded-lg font-medium shadow-xs transition-transform active:scale-[0.96] group-data-[collapsible=icon]:hidden" onClick={toggleTheme}>
-          {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={dark ? "sun" : "moon"}
+              initial={{ opacity: 0, scale: 0.5, filter: "blur(4px)" }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, scale: 0.5, filter: "blur(4px)" }}
+              transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            >
+              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </motion.span>
+          </AnimatePresence>
           {dark ? "Light theme" : "Dark theme"}
         </Button>
 
