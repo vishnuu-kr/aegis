@@ -156,7 +156,38 @@
     /* shadow-as-border: replaces flat borders with layered shadow for depth */
     --shadow-border: 0px 0px 0px 1px rgba(0,0,0,.06), 0px 1px 2px -1px rgba(0,0,0,.06), 0px 2px 4px 0px rgba(0,0,0,.04);
     --shadow-border-hover: 0px 0px 0px 1px rgba(0,0,0,.08), 0px 1px 2px -1px rgba(0,0,0,.08), 0px 2px 4px 0px rgba(0,0,0,.06);
-    
+    /* --shadow-dropdown: floating panel above the page, deeper than card, soft falloff */
+    --shadow-dropdown: 0 12px 32px -10px rgba(0,0,0,.18), 0 2px 6px -2px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04), 0 1px 0 rgba(255,255,255,.7) inset;
+    /* --shadow-modal: max elevation for dialogs, larger blur and tighter border */
+    --shadow-modal: 0 40px 90px -28px rgba(0,0,0,.34), 0 12px 28px -16px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.05), 0 1px 0 rgba(255,255,255,.8) inset;
+    /* --shadow-focus: brand-tinted focus ring, layered for crisp keyboard outline */
+    --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--crimson) 22%, transparent), 0 0 0 1px var(--crimson);
+
+    /* ============ RADIUS SCALE (concentric rule)
+       Outer radius = inner radius + padding. When a card uses --radius-md,
+       any wrapper holding it must use --radius-md + its own padding.
+       This keeps nested surfaces visually nested instead of clashing. */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+    --radius-2xl: 24px;
+    --radius-3xl: 32px;
+
+    /* ============ MOTION TOKENS
+       Durations follow the transitions.dev defaults: 150ms quick,
+       250ms fast, 400ms medium, 500ms slow. Scale press is 0.96. */
+    --duration-quick: 150ms;
+    --duration-fast: 250ms;
+    --duration-medium: 400ms;
+    --duration-slow: 500ms;
+    --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --distance-micro: 4px;
+    --distance-base: 8px;
+    --distance-medium: 12px;
+    --scale-press: 0.96;
+
     /* mega-dropdown animation variables */
     --dropdown-open-dur: 250ms;
     --dropdown-close-dur: 150ms;
@@ -173,6 +204,9 @@
   * { box-sizing: border-box; }
   html {
     scroll-padding-top: 74px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   
   html.lenis, html.lenis body {
@@ -221,6 +255,10 @@
   /* ============ TYPE ============ */
   .serif { font-family: 'Bricolage Grotesque', 'Inter', sans-serif; font-weight: 600; }
   .mono  { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; font-variant-numeric: tabular-nums; }
+  /* Typography utilities (consumed by both landing + dashboard) */
+  .font-tabular { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1, 'cv11' 1; }
+  .text-balance { text-wrap: balance; }
+  .text-pretty   { text-wrap: pretty; }
   .display {
     font-family: 'Bricolage Grotesque', 'Inter', sans-serif;
     font-weight: 700; letter-spacing: -.028em; color: var(--ink);
@@ -1671,6 +1709,11 @@
     --shadow-dark:  0 40px 90px -36px rgba(0,0,0,.9), 0 1px 0 rgba(255,248,235,.04) inset;
     --shadow-border: 0 0 0 1px rgba(255, 248, 235,.1);
     --shadow-border-hover: 0 0 0 1px rgba(255, 248, 235,.18);
+    /* dark mode shadow overrides: heavier shadows + light hairline borders */
+    --shadow-dropdown: 0 16px 40px -12px rgba(0,0,0,.72), 0 4px 10px -4px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08), 0 1px 0 rgba(255,255,255,.04) inset;
+    --shadow-modal: 0 50px 110px -28px rgba(0,0,0,.85), 0 16px 36px -16px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.09), 0 1px 0 rgba(255,255,255,.05) inset;
+    --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--crimson) 38%, transparent), 0 0 0 1px var(--crimson);
+    /* radius and motion tokens carry through unchanged in dark mode */
 
     /* announcement banner dark overrides */
     --banner-bg: linear-gradient(90deg, #7F1D1D 0%, #B91C1C 100%);

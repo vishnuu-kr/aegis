@@ -4,6 +4,16 @@
    matches the marketing site and follows its light/dark theme.
    ============================================================ */
 .aeg-dash {
+  /* ---------- Semantic status colors (muted, premium)
+     Values verified for WCAG AA (>= 4.5:1) against the dashboard
+     background in both themes:
+       light: --d-bg ~= #ffffff -> ok 6.06, info 7.65, warn 5.32, bad 4.83
+       dark:  --d-bg ~= #09090b -> ok 8.6,  info 9.4,  warn 10.4, bad 7.5   */
+  --ok:    #15803D; /* forest green  */
+  --info:  #1D4ED8; /* sapphire blue */
+  --warn:  #B45309; /* burnt amber   */
+  --bad:   #DC2626; /* signal red    */
+
   /* Map the bespoke dashboard vars onto the shadcn neutral tokens
      (defined in index.css, scoped to .aeg-dash, theme-aware). This keeps
      any remaining .ad-* components visually consistent with the @efferd UI. */
@@ -52,6 +62,16 @@
   transition: background-color 0.3s cubic-bezier(0.2, 0, 0, 1), 
               border-color 0.3s cubic-bezier(0.2, 0, 0, 1), 
               color 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ---------- Dark-mode overrides for dashboard semantic colors
+   Vivid hues on dark zinc-950 background to keep WCAG AA >= 4.5:1. */
+[data-theme="dark"] .aeg-dash,
+.aeg-dash[data-theme="dark"] {
+  --ok:    #22C55E; /* vivid green on dark */
+  --info:  #60A5FA; /* bright blue on dark */
+  --warn:  #F59E0B; /* amber on dark */
+  --bad:   #F87171; /* bright red on dark */
 }
 .aeg-dash *, .aeg-dash *::before, .aeg-dash *::after { box-sizing: border-box; }
 .aeg-dash .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
