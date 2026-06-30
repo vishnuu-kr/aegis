@@ -12,7 +12,7 @@ import {
   useStore, verdictTone, timeAgo, money,
   type Provider, type Device, type LedgerEntry,
 } from "./data";
-import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader, CountdownRing, JsonTree, PolicyComposer, BiometricOverlay } from "./ui";
+import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader, CountdownRing, JsonTree, PolicyComposer, BiometricOverlay, SegmentedControl } from "./ui";
 import type { RouteKey } from "./Dashboard";
 
 // Premium UI Component imports from the installed blocks
@@ -565,27 +565,18 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         title="Inbox"
         subtitle="Pending requests waiting on your signature."
         actions={
-          <div className="flex bg-muted p-0.5 rounded-lg border border-border gap-0.5">
-            {(["all", "STEP_UP", "NOTICE"] as const).map((f) => {
-              const active = filter === f;
-              return (
-                <button 
-                  key={f} 
-                  className={`h-7 px-3 text-xs font-semibold rounded-md transition-all duration-150 relative cursor-pointer border-none bg-transparent ${active ? "text-card-foreground" : "text-muted-foreground hover:text-card-foreground"}`}
-                  onClick={() => setFilter(f)}
-                >
-                  {active && (
-                    <motion.div
-                      layoutId="active-seg-inbox"
-                      className="absolute inset-0 bg-card rounded-[5px] border border-border/40 shadow-sm z-0"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10">{f === "all" ? "All" : f === "STEP_UP" ? "Step-up" : "Notice"}</span>
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl<"all" | "STEP_UP" | "NOTICE">
+            value={filter}
+            onChange={setFilter}
+            layoutId="active-seg-inbox"
+            size="sm"
+            ariaLabel="Filter inbox by request kind"
+            options={[
+              { value: "all", label: "All" },
+              { value: "STEP_UP", label: "Step-up" },
+              { value: "NOTICE", label: "Notice" },
+            ]}
+          />
         }
       />
 
