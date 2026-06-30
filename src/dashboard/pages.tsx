@@ -656,16 +656,13 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                 return (
                   <motion.div
                     key={a.id}
-                    className={`flex items-start gap-3 p-3.5 rounded-lg border transition-all duration-150 cursor-pointer relative overflow-hidden ${selected ? "bg-muted border-border" : "bg-card border-border/40 hover:border-border"}`}
+                    className={`flex items-start gap-3 p-3.5 rounded-lg border transition-all duration-150 cursor-pointer ${selected ? "bg-muted border-border ring-1 ring-inset ring-foreground/15" : "bg-card border-border/40 hover:border-border"}`}
                     onClick={() => setSelectedId(a.id)}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {selected && (
-                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500" />
-                    )}
                     <div className="mt-0.5 flex-shrink-0">
                       <CountdownRing remaining={Math.max(0, Math.floor((a.createdAt + 3600000 - now) / 1000))} total={3600} />
                     </div>
@@ -736,17 +733,16 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-3 pt-4 border-t border-border mt-auto">
-                      <Button variant="default" size="sm" className="h-8 gap-1.5 font-semibold bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/40" onClick={() => handleApprove(selected.id)}>
-                        <Fingerprint size={14} /> Approve &amp; sign
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1 text-red-500 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500 focus-visible:ring-2 focus-visible:ring-red-500/40"
+                      <Btn variant="ok" icon={<Fingerprint size={14} />} onClick={() => handleApprove(selected.id)}>
+                        Approve &amp; sign
+                      </Btn>
+                      <Btn
+                        variant="danger"
+                        icon={<X size={14} />}
                         onClick={() => { resolveApproval(selected.id, "deny"); setSelectedId(null); }}
                       >
-                        <X size={14} /> Deny
-                      </Button>
+                        Deny
+                      </Btn>
                       <span className="ml-auto text-[10px] text-muted-foreground font-medium tabular-nums">Signed on-device · passkey</span>
                     </div>
                   </Card>
@@ -756,24 +752,19 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground p-12 text-center"
+                  className="flex flex-col flex-1 h-full items-center justify-center gap-6 p-12"
                 >
-                  <div className="flex flex-col items-center gap-4 max-w-xs">
-                    <div className="size-14 rounded-2xl border border-border bg-muted/50 flex items-center justify-center">
-                      <InboxIcon size={28} className="opacity-30" />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-sm font-semibold text-card-foreground">No request selected</span>
-                      <span className="text-xs text-muted-foreground leading-relaxed">
-                        Select a pending request on the left to review the action details, check risk context, and sign or deny with your passkey.
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-2 bg-muted/40 border border-border rounded-lg p-3 text-left w-full">
-                      <ShieldCheck size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-[11px] text-muted-foreground leading-relaxed">
-                        All approvals are signed on-device using a passkey. Aegis never transmits your private key.
-                      </span>
-                    </div>
+                  <EmptyState
+                    icon={<InboxIcon size={26} />}
+                    title="No request selected"
+                  >
+                    Select a pending request on the left to review the action details, check risk context, and sign or deny with your passkey.
+                  </EmptyState>
+                  <div className="flex items-start gap-2 bg-muted/40 border border-border rounded-lg p-3 text-left max-w-xs">
+                    <ShieldCheck size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                    <span className="text-[11px] text-muted-foreground leading-relaxed">
+                      All approvals are signed on-device using a passkey. Aegis never transmits your private key.
+                    </span>
                   </div>
                 </motion.div>
               )}
@@ -1166,22 +1157,23 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         actions={
           <>
             {unreadCount > 0 && (
-              <button
-                className="ad-btn ad-btn-ghost sm active:scale-[0.97] transition-transform duration-100"
+              <Btn
+                variant="ghost"
                 onClick={() => setRead(new Set(notifications.map(n => n.id)))}
               >
                 Mark all read
-              </button>
+              </Btn>
             )}
-            <button
-              className="ad-btn ad-btn-subtle sm active:scale-[0.97] transition-transform duration-100 flex items-center gap-1.5"
+            <Btn
+              variant="subtle"
+              icon={<X size={13} />}
               onClick={() => {
                 setRead(new Set(notifications.map(n => n.id)));
                 toast("All notifications cleared", "ok");
               }}
             >
-              <X size={13} /> Clear all
-            </button>
+              Clear all
+            </Btn>
           </>
         }
       />
@@ -1193,13 +1185,12 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
           animate="visible"
         >
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
-              <div className="size-12 rounded-2xl border border-border bg-muted/40 flex items-center justify-center">
-                <Bell size={22} className="opacity-30" />
-              </div>
-              <span className="text-sm font-medium">All caught up</span>
-              <span className="text-xs">No notifications right now.</span>
-            </div>
+            <EmptyState
+              icon={<Bell size={26} />}
+              title="All caught up"
+            >
+              No notifications right now.
+            </EmptyState>
           ) : (
             notifications.map(n => {
               const isRead = read.has(n.id);
@@ -1216,7 +1207,7 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                 <motion.div
                   key={n.id}
                   variants={fadeUp}
-                  className={`flex gap-4 p-4 rounded-lg border border-border border-l-4 cursor-pointer transition-all duration-200 hover:shadow-sm ${toneClass} ${isRead ? "opacity-60" : ""}`}
+                  className={`flex gap-4 p-4 rounded-lg border border-border border-l-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20 ${toneClass} ${isRead ? "opacity-60" : ""}`}
                   onClick={() => setRead(r => new Set([...r, n.id]))}
                 >
                   <div className="flex-1 min-w-0">
@@ -1235,15 +1226,15 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                     <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
                     {n.category === "Approval" && (
                       <div className="flex gap-2 mt-3">
-                        <button
-                          className="text-[11px] font-semibold px-3 py-1 rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                        <Btn
+                          variant="ok"
                           onClick={e => {
                             e.stopPropagation();
                             onNav("inbox");
                           }}
                         >
                           Review in Inbox
-                        </button>
+                        </Btn>
                       </div>
                     )}
                   </div>
