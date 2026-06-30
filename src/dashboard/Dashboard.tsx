@@ -21,6 +21,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/co
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { getStored, setStored, removeStored } from "@/lib/storage";
 import type { LedgerEntry } from "./data";
 
 export type RouteKey =
@@ -74,7 +75,7 @@ function useTheme(): [boolean, () => void] {
     setDark(next);
     if (next) document.documentElement.setAttribute("data-theme", "dark");
     else document.documentElement.removeAttribute("data-theme");
-    try { localStorage.setItem("aeg-theme", next ? "dark" : "light"); } catch { /* ignore */ }
+    setStored("aeg-theme", next ? "dark" : "light");
   };
   return [dark, toggle];
 }
@@ -402,13 +403,13 @@ function AegisHeader({
 function Shell() {
   const [route, nav] = useHashRoute();
   const [dark, toggleTheme] = useTheme();
-  const [wizardOpen, setWizardOpen] = useState(() => localStorage.getItem("aeg-dash-wizard-done") !== "1");
+  const [wizardOpen, setWizardOpen] = useState(() => getStored("aeg-dash-wizard-done") !== "1");
   const [searchOpen, setSearchOpen] = useState(false);
   const { ledger } = useStore();
 
   const finishWizard = () => {
-    localStorage.setItem("aeg-dash-wizard-done", "1");
-    localStorage.removeItem("aeg-dash-wizard-step");
+    setStored("aeg-dash-wizard-done", "1");
+    removeStored("aeg-dash-wizard-step");
     setWizardOpen(false);
   };
 

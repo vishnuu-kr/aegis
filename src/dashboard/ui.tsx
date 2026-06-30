@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useId } from "react";
 import { useStore } from "./data";
 import { AnimatePresence, motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import {
   DollarSign, Eye, UserCheck, ShieldCheck, Check, X, Fingerprint,
 } from "lucide-react";
@@ -179,6 +180,20 @@ export function PageHeader({
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function PageShell({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("ad-page-shell", className)}>
+      {children}
     </div>
   );
 }

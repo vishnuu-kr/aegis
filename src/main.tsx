@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Router from './Router'
 
 declare global {
@@ -19,9 +20,11 @@ if (!root) {
 
 root.render(
   <StrictMode>
-    <TooltipProvider delayDuration={120}>
-      <Router />
-    </TooltipProvider>
+    <ErrorBoundary>
+      <TooltipProvider delayDuration={120}>
+        <Router />
+      </TooltipProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
 

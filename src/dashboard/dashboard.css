@@ -1360,4 +1360,538 @@
   }
 }
 
+/* ---------- PageShell: consistent centered layout ---------- */
+.aeg-dash .ad-page-shell {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.aeg-dash .ad-page-shell > * {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (min-width: 1280px) {
+  .aeg-dash .ad-page-shell > * {
+    max-width: 900px;
+  }
+}
+
+/* ---------- Premium themed scrollbar ---------- */
+.aeg-dash .ad-scroll::-webkit-scrollbar,
+.aeg-dash .ad-page-shell::-webkit-scrollbar,
+.aeg-dash .ad-history-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.aeg-dash .ad-scroll::-webkit-scrollbar-thumb,
+.aeg-dash .ad-page-shell::-webkit-scrollbar-thumb,
+.aeg-dash .ad-history-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-radius: 6px;
+}
+.aeg-dash .ad-scroll::-webkit-scrollbar-track,
+.aeg-dash .ad-page-shell::-webkit-scrollbar-track,
+.aeg-dash .ad-history-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- Notification row premium polish ---------- */
+.aeg-dash .ad-notification-row {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  background: var(--card);
+  transition: background-color .2s var(--d-ease), box-shadow .2s var(--d-ease);
+}
+.aeg-dash .ad-notification-row:hover {
+  background: var(--muted);
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.08);
+}
+.aeg-dash .ad-notification-row.is-read { opacity: .55; }
+.aeg-dash .ad-notification-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex: none; border: 1px solid var(--border); background: var(--muted);
+}
+.aeg-dash .ad-empty-lg {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 80px 24px; gap: 12px; border-radius: 20px;
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--foreground) 2%, transparent);
+}
+.aeg-dash .ad-empty-ico {
+  width: 56px; height: 56px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+/* ---------- Extra premium: ambient page background ---------- */
+.aeg-dash [data-slot="sidebar-inset"] {
+  background:
+    radial-gradient(80% 40% at 50% -10%, color-mix(in srgb, var(--primary) 4%, transparent), transparent 70%),
+    var(--background);
+}
+
+/* ---------- Extra premium: focus ring on inputs ---------- */
+.aeg-dash .ad-input:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+/* ---------- Premium full-screen wizard ---------- */
+.aeg-dash .ad-wizmask-full {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column;
+  background: var(--background);
+}
+.aeg-dash .ad-wiz-full {
+  flex: 1; display: flex; flex-direction: column;
+  max-width: 720px; width: 100%; margin: 0 auto;
+  padding: 24px; position: relative;
+}
+.aeg-dash .ad-wiz-close {
+  position: absolute; top: 20px; right: 20px;
+  width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted-foreground); cursor: pointer;
+  transition: background-color .2s var(--d-ease), color .2s var(--d-ease), border-color .2s var(--d-ease);
+}
+.aeg-dash .ad-wiz-close:hover {
+  background: var(--muted); color: var(--foreground); border-color: var(--border);
+}
+.aeg-dash .ad-wiz-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0 28px;
+}
+.aeg-dash .ad-wiz-progress { display: flex; align-items: center; gap: 8px; }
+.aeg-dash .ad-wiz-progress-dot {
+  width: 8px; height: 8px; border-radius: 999px;
+  background: var(--muted);
+  transition: background-color .25s var(--d-ease), width .25s var(--d-ease);
+}
+.aeg-dash .ad-wiz-progress-dot.is-active { width: 24px; background: var(--primary); }
+.aeg-dash .ad-wiz-progress-dot.done { background: var(--primary); }
+.aeg-dash .ad-wiz-stage {
+  flex: 1; display: flex; flex-direction: column; justify-content: center;
+}
+.aeg-dash .ad-wiz-step-panel { width: 100%; }
+.aeg-dash .ad-wiz-step-hero {
+  text-align: center; margin-bottom: 28px;
+}
+.aeg-dash .ad-wiz-step-hero h1 {
+  font-size: 1.5rem; font-weight: 700;
+  margin: 14px 0 8px; color: var(--card-foreground);
+}
+.aeg-dash .ad-wiz-step-hero p {
+  font-size: 0.875rem; color: var(--muted-foreground); margin: 0;
+}
+.aeg-dash .ad-wiz-step-icon {
+  width: 56px; height: 56px; border-radius: 16px;
+  border: 1px solid var(--border); background: var(--card);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary); margin: 0 auto;
+  box-shadow: 0 2px 10px -4px rgba(0, 0, 0, 0.08);
+}
+.aeg-dash .ad-wiz-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 24px;
+  box-shadow: 0 4px 20px -8px rgba(0, 0, 0, 0.08);
+}
+.aeg-dash .ad-wiz-card.flat {
+  box-shadow: none; background: transparent; border: none; padding: 0;
+}
+.aeg-dash .ad-wiz-card-lead {
+  font-size: 0.875rem; color: var(--muted-foreground); margin: 0 0 18px;
+}
+.aeg-dash .ad-wiz-summary {
+  display: flex; gap: 24px; margin-top: 20px;
+  padding-top: 20px; border-top: 1px solid var(--border);
+}
+.aeg-dash .ad-wiz-summary > div {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.aeg-dash .ad-wiz-summary-label {
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--muted-foreground);
+}
+.aeg-dash .ad-wiz-summary-value {
+  font-size: 0.8rem; color: var(--card-foreground);
+}
+.aeg-dash .ad-wiz-seg {
+  display: inline-flex; gap: 4px; padding: 4px;
+  border-radius: 10px; background: var(--muted);
+  border: 1px solid var(--border); margin-bottom: 16px;
+}
+.aeg-dash .ad-wiz-seg button {
+  position: relative; padding: 6px 14px; border-radius: 7px;
+  font-size: 0.8rem; font-weight: 500; color: var(--muted-foreground);
+  background: transparent; border: none; cursor: pointer;
+  transition: color .2s var(--d-ease), background-color .2s var(--d-ease);
+}
+.aeg-dash .ad-wiz-seg button.is-active {
+  color: var(--primary-foreground); background: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.aeg-dash .ad-wiz-snippet {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-radius: 12px;
+  background: var(--muted); border: 1px solid var(--border);
+  position: relative;
+}
+.aeg-dash .ad-wiz-snippet code {
+  flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem; color: var(--card-foreground); word-break: break-all;
+}
+.aeg-dash .ad-wiz-snippet-prompt {
+  color: var(--muted-foreground); user-select: none;
+}
+.aeg-dash .ad-wiz-copied {
+  position: absolute; bottom: calc(100% + 8px); right: 8px;
+  background: var(--primary); color: var(--primary-foreground);
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.aeg-dash .ad-wiz-foot-full {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 28px; border-top: 1px solid var(--border);
+}
+
+/* ============================================================
+   EXTRA PREMIUM POLISH — make it better
+   ============================================================ */
+
+/* ---------- Subtle grain texture overlay on the dashboard ---------- */
+.aeg-dash::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+}
+[data-theme="dark"] .aeg-dash::before {
+  opacity: 0.05;
+}
+
+/* ---------- Premium sidebar gradient ---------- */
+.aeg-dash .ad-side {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--foreground) 1.5%, transparent) 0%,
+      transparent 40%),
+    var(--sidebar, var(--d-bg)) !important;
+}
+[data-theme="dark"] .aeg-dash .ad-side {
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.025) 0%,
+      transparent 40%),
+    #09090b !important;
+}
+
+/* ---------- Wizard ambient glow ---------- */
+.aeg-dash .ad-wizmask-full {
+  background:
+    radial-gradient(60% 50% at 50% 0%,
+      color-mix(in srgb, var(--primary) 6%, transparent),
+      transparent 70%),
+    var(--background);
+}
+
+/* ---------- Smoother card hover with shimmer ---------- */
+.aeg-dash [data-slot="card"],
+.aeg-dash .ad-card {
+  position: relative;
+  overflow: hidden;
+}
+.aeg-dash [data-slot="card"]::after,
+.aeg-dash .ad-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    color-mix(in srgb, var(--foreground) 3%, transparent) 50%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.4s var(--d-ease);
+  pointer-events: none;
+  transform: translateX(-100%);
+}
+.aeg-dash [data-slot="card"]:hover::after,
+.aeg-dash .ad-card:hover::after {
+  opacity: 1;
+  animation: ad-shimmer 1.2s var(--d-ease) forwards;
+}
+@keyframes ad-shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* ---------- Premium button press feedback ---------- */
+.aeg-dash button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 0.1s var(--d-ease);
+}
+
+/* ---------- Refined focus rings ---------- */
+.aeg-dash button:focus-visible,
+.aeg-dash a:focus-visible,
+.aeg-dash input:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px color-mix(in srgb, var(--primary) 35%, transparent);
+  border-radius: 8px;
+}
+
+/* ---------- Better dark mode shadows ---------- */
+[data-theme="dark"] .aeg-dash [data-slot="card"],
+[data-theme="dark"] .aeg-dash .ad-card {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 32px -16px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+[data-theme="dark"] .aeg-dash [data-slot="card"]:hover,
+[data-theme="dark"] .aeg-dash .ad-card:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 24px 56px -20px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* ---------- Notification dot pulse ---------- */
+@keyframes ad-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+.aeg-dash .ad-notification-unread-dot {
+  animation: ad-dot-pulse 2s var(--d-ease) infinite;
+}
+
+/* ---------- Better table row hover ---------- */
+.aeg-dash tbody tr {
+  transition: background-color 0.15s var(--d-ease);
+}
+.aeg-dash tbody tr:hover {
+  background: color-mix(in srgb, var(--primary) 3%, transparent);
+}
+
+/* ---------- Refined search modal backdrop ---------- */
+.aeg-dash .fixed.inset-0.z-50 {
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+}
+.aeg-dash .fixed.inset-0.z-50 > .absolute.inset-0 {
+  background: rgba(9, 9, 11, 0.5);
+}
+[data-theme="dark"] .aeg-dash .fixed.inset-0.z-50 > .absolute.inset-0 {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* ---------- Subtle border improvement on cards ---------- */
+.aeg-dash [data-slot="card-header"],
+.aeg-dash .ad-card .ad-section-title {
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Wizard step icon glow ---------- */
+.aeg-dash .ad-wiz-step-icon {
+  position: relative;
+}
+.aeg-dash .ad-wiz-step-icon::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 24px;
+  background: radial-gradient(50% 50% at 50% 50%,
+    color-mix(in srgb, var(--primary) 12%, transparent),
+    transparent 70%);
+  z-index: -1;
+  opacity: 0.6;
+  animation: ad-icon-glow 3s var(--d-ease) infinite;
+}
+@keyframes ad-icon-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* ---------- Progress dots smoother ---------- */
+.aeg-dash .ad-wiz-progress-dot {
+  transition: background-color 0.3s var(--d-ease), width 0.4s var(--d-ease), transform 0.3s var(--d-ease);
+}
+.aeg-dash .ad-wiz-progress-dot.is-active {
+  animation: ad-progress-active 2s var(--d-ease) infinite;
+}
+@keyframes ad-progress-active {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 30%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+/* ---------- PageShell: no auto animation (tab switches should be instant) ---------- */
+
+/* ---------- Premium input refinement ---------- */
+.aeg-dash .ad-input {
+  transition: box-shadow 0.22s var(--d-ease), border-color 0.22s var(--d-ease), background-color 0.22s var(--d-ease);
+}
+.aeg-dash .ad-input:hover:not(:focus) {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 8%, transparent),
+    0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+/* ---------- Chip refinement ---------- */
+.aeg-dash .ad-chip {
+  transition: background-color 0.2s var(--d-ease), border-color 0.2s var(--d-ease);
+}
+
+/* ---------- Toggle refinement ---------- */
+.aeg-dash .ad-toggle {
+  transition: background-color 0.25s var(--d-ease), box-shadow 0.25s var(--d-ease);
+}
+.aeg-dash .ad-toggle:hover {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+.aeg-dash .ad-toggle.on:hover {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 20%, transparent);
+}
+
+/* ============================================================
+   SIDEBAR PREMIUM POLISH — reduce rounded corners, fix spacing
+   ============================================================ */
+
+/* ---------- Reduce rounded corners on all sidebar boxes ---------- */
+.aeg-dash .ad-side [data-sidebar="menu-button"],
+.aeg-dash .ad-nav-item {
+  border-radius: 6px !important;
+}
+.aeg-dash .ad-side .ad-connect-btn {
+  border-radius: 6px !important;
+}
+.aeg-dash .ad-side .ad-agent-card {
+  border-radius: 6px !important;
+}
+.aeg-dash .ad-side [data-sidebar="menu-badge"] {
+  border-radius: 4px !important;
+}
+
+/* ---------- Expanded state spacing ---------- */
+.aeg-dash .ad-side {
+  padding: 0 !important;
+}
+.aeg-dash .ad-side [data-sidebar="header"] {
+  height: 3rem !important;
+  padding: 0 12px !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+.aeg-dash .ad-side [data-sidebar="content"] {
+  padding: 12px 10px !important;
+  gap: 4px !important;
+}
+.aeg-dash .ad-side [data-sidebar="group"] {
+  padding: 0 !important;
+  gap: 2px !important;
+}
+.aeg-dash .ad-side [data-sidebar="group-label"] {
+  padding: 0 10px !important;
+  margin-top: 14px !important;
+  margin-bottom: 4px !important;
+  font-size: 10.5px !important;
+  letter-spacing: 0.06em !important;
+}
+.aeg-dash .ad-side [data-sidebar="menu"] {
+  padding: 0 !important;
+  gap: 1px !important;
+}
+.aeg-dash .ad-side [data-sidebar="menu-item"] {
+  padding: 0 !important;
+}
+.aeg-dash .ad-nav-item,
+.aeg-dash .ad-side [data-sidebar="menu-button"] {
+  height: 32px !important;
+  padding: 0 10px !important;
+  gap: 10px !important;
+  font-size: 13px !important;
+}
+.aeg-dash .ad-side .ad-connect-btn {
+  height: 34px !important;
+  padding: 0 12px !important;
+  margin-bottom: 6px !important;
+  font-size: 12.5px !important;
+}
+.aeg-dash .ad-side [data-sidebar="separator"] {
+  margin: 8px 12px !important;
+}
+.aeg-dash .ad-side [data-sidebar="footer"] {
+  padding: 10px !important;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+  gap: 4px !important;
+}
+.aeg-dash .ad-side .ad-agent-card {
+  padding: 7px 9px !important;
+  gap: 9px !important;
+}
+
+/* ---------- Collapsed (icon) state spacing ---------- */
+.aeg-dash .ad-side[data-state="collapsed"] [data-sidebar="header"] {
+  padding: 0 8px !important;
+  justify-content: center !important;
+}
+.aeg-dash .ad-side[data-state="collapsed"] [data-sidebar="content"] {
+  padding: 12px 6px !important;
+  align-items: center !important;
+}
+.aeg-dash .ad-side[data-state="collapsed"] [data-sidebar="group"] {
+  align-items: center !important;
+}
+.aeg-dash .ad-side[data-state="collapsed"] [data-sidebar="menu-button"] {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+}
+.aeg-dash .ad-side[data-state="collapsed"] [data-sidebar="footer"] {
+  padding: 10px 6px !important;
+  align-items: center !important;
+}
+.aeg-dash .ad-side[data-state="collapsed"] .ad-agent-card {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+}
+.aeg-dash .ad-side[data-state="collapsed"] [data-sidebar="separator"] {
+  margin: 8px 6px !important;
+}
+
+/* ---------- SidebarMenuBadge refinement ---------- */
+.aeg-dash .ad-side [data-sidebar="menu-badge"] {
+  padding: 0 5px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+
+/* ---------- Tooltip styling for collapsed nav ---------- */
+.aeg-dash [data-sidebar="tooltip-content"],
+.aeg-dash [data-radix-tooltip-content] {
+  border-radius: 6px !important;
+}
+
 
