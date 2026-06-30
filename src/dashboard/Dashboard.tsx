@@ -432,11 +432,8 @@ function Shell() {
             onOpenSearch={() => setSearchOpen(true)}
           />
           <main id="main-content" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <motion.div
+            <div
               key={route}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.08, ease: "easeOut" }}
               className="flex h-full min-h-0 flex-1 flex-col"
             >
               {route === "governance" && <GovernancePage />}
@@ -450,7 +447,7 @@ function Shell() {
               {route === "notifications" && <NotificationsPage onNav={nav} />}
               {route === "profile" && <ProfilePage />}
               {route === "help" && <HelpPage />}
-            </motion.div>
+            </div>
           </main>
         </SidebarInset>
       </SidebarProvider>
