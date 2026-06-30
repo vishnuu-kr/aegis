@@ -136,4 +136,5 @@ test.describe('Landing Page E2E Tests', () => {
     const activeMandates = page.locator('.ledger-list-item:has-text("ACTIVE")');
     await expect(activeMandates).toHaveCount(0);
   });
+
 });

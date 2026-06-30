@@ -73,7 +73,7 @@ function MCPConsole() {
         i >= shown ? null : line === null ? (
           <div className="mcp-spacer" key={i}></div>
         ) : (
-          <div className={"mcp-cl term-line" + (i === 4 ? " cmt" : "")} key={i}>{line}</div>
+          <div className={"mcp-cl term-line font-tabular" + (i === 4 ? " cmt" : "")} key={i}>{line}</div>
         )
       )}
       {!typing && allShown && (
@@ -659,7 +659,7 @@ function App() {
           src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} 
           alt="AgentTag Logo" 
           height="24" 
-          style={{ height: "24px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)", borderRadius: "4px" }} 
+          style={{ height: "24px", width: "auto" }} 
           className="brand-logo-img" 
         />
         <span className="brand-logo-text">AgentTag</span>
@@ -912,7 +912,7 @@ function App() {
 <header className="aeg-wrap" id="top" style={{paddingTop: "112px", paddingBottom: "96px", position: "relative", zIndex: "1"}}>
 <div style={{display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "48px", maxWidth: "800px", margin: "0 auto", width: "100%"}}>
 {/* CENTERED: copy */}
-<div className="hero-copy" style={{display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", maxWidth: "680px", margin: "0 auto", width: "100%"}}>
+<div className="hero-copy">
 <a className="pill-badge reveal" href="#cta" style={{marginBottom: "26px"}}>
 <span style={{position: "relative", display: "inline-flex", width: "8px", height: "8px"}}>
 <span style={{position: "absolute", inset: "0", borderRadius: "50%", background: "var(--ok)", animation: "aeg-ping 1.8s var(--ease) infinite"}}></span>
@@ -1705,7 +1705,7 @@ function App() {
 <div className="approval-visual-col">
 <div className="approval-card" style={{position: "relative", width: "100%", maxWidth: "320px", borderRadius: "8px", padding: "22px", background: "var(--paper-2)", WebkitBackdropFilter: "blur(16px) saturate(1.4)", backdropFilter: "blur(16px) saturate(1.4)", border: "1px solid var(--line)", boxShadow: "var(--shadow-lift)"}}>
 <div style={{display: "flex", alignItems: "center", gap: "9px", marginBottom: "16px"}}>
-  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="18" style={{ height: "18px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
+  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="18" style={{ height: "18px", width: "auto" }} />
 <span style={{fontWeight: "700", fontSize: "13px", color: "var(--ink)"}}>AgentTag</span>
 {(() => {
   const chip = {
@@ -1756,7 +1756,7 @@ function App() {
 </div>
 <div className="mono z" style={{padding: "6px 0", fontSize: "13px", minHeight: "284px"}}>
 {ledgerRows.map((row, idx) => (
-<div key={row.seq ?? idx} className="row-led" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid var(--line)", animation: "aeg-rise .4s var(--ease)"}}>
+<div key={row.seq ?? idx} className="row-led font-tabular" style={{display: "grid", gridTemplateColumns: "54px 78px 1fr auto 78px", alignItems: "center", gap: "10px", padding: "9px 20px", borderBottom: "1px solid var(--line)", animation: "aeg-rise .4s var(--ease)"}}>
 <span style={{color: "var(--faint)"}}>#{row.seq}</span>
 <span style={{color: "var(--muted)", fontSize: "11.5px"}}>{row.ev}</span>
 <span style={{color: "var(--ink-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{row.act}</span>
@@ -1778,7 +1778,7 @@ function App() {
 <div className="card card-spotlight" style={{padding: "0", overflow: "hidden", display: "flex", flexDirection: "column"}}>
 <div style={{padding: "30px 32px 26px"}}>
 <div style={{display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px"}}>
-  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="19" style={{ height: "19px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
+  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="19" style={{ height: "19px", width: "auto" }} />
 <span style={{fontWeight: "600", fontSize: "18px", color: "var(--ink)"}}>The Passport</span>
 </div>
 <p style={{margin: "0", fontSize: "15px", lineHeight: "1.62", color: "var(--muted)"}}>Every agent gets its own cryptographic DID and signing key. Revoke it once and its authority stops.</p>
@@ -2051,7 +2051,7 @@ function App() {
 <div className="footer-top-row">
 <div className="footer-brand-col">
 <div style={{display: "flex", alignItems: "center", gap: "10px"}}>
-  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="24" style={{ height: "24px", width: "auto", filter: theme === 'dark' ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }} />
+  <img src={theme === 'dark' ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"} alt="AgentTag" height="24" style={{ height: "24px", width: "auto" }} />
 <span style={{fontWeight: "800", fontSize: "20px", letterSpacing: "-0.3px", color: "var(--ink)", textTransform: "uppercase", fontFamily: "'Bricolage Grotesque', sans-serif"}}>AgentTag</span>
 </div>
 <p className="footer-brand-tagline">The control plane for delegated agent identity. Your agent, its own passport.</p>

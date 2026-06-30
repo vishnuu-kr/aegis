@@ -1,5 +1,18 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
+
+// Ticking "now" hook — replaces Date.now() during render so the
+// react-hooks/purity rule stays happy. Renders first read from a
+// useState initializer, then an interval updates it.
+function useNow(intervalMs: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
 import {
   Cpu, ShieldCheck, Inbox as InboxIcon, DollarSign, Activity, AlertTriangle,
   Pause, Play, Ban, Plus, Check, X, Clock, Search, Download, Info,
@@ -12,7 +25,7 @@ import {
   useStore, verdictTone, timeAgo, money,
   type Provider, type Device, type LedgerEntry,
 } from "./data";
-import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader, CountdownRing, JsonTree, PolicyComposer, BiometricOverlay } from "./ui";
+import { Btn, IconBtn, Chip, Toggle, EmptyState, PageHeader, CountdownRing, JsonTree, PolicyComposer, BiometricOverlay, SegmentedControl } from "./ui";
 import type { RouteKey } from "./Dashboard";
 
 // Premium UI Component imports from the installed blocks
@@ -190,45 +203,58 @@ export function OverviewPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         </div>
       )}
 
-      {/* 1. Stats Cards Row */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Pending approvals"
-          icon={<InboxIcon size={14} />}
-          value={approvals.length}
-          delta={approvals.length ? -12.5 : -100}
-          note="vs yesterday"
-          color="#f97316"
-          chartData={[{ v: 2 }, { v: 3 }, { v: 2 }, { v: 4 }, { v: 3 }, { v: 4 }]}
-        />
-        <StatCard
-          label="Active agents"
-          icon={<Cpu size={14} />}
-          value={`${activeAgents}/${agents.length}`}
-          delta={5.2}
-          note="vs last week"
-          color="#64748b"
-          chartData={[{ v: 1 }, { v: 2 }, { v: 2 }, { v: 2 }, { v: 3 }, { v: 2 }, { v: 2 }]}
-        />
-        <StatCard
-          label="Spend this month"
-          icon={<DollarSign size={14} />}
-          value={money(spend)}
-          delta={8.2}
-          note="vs prior 30d"
-          color="#ef4444"
-          chartData={[{ v: 180 }, { v: 240 }, { v: 210 }, { v: 320 }, { v: 380 }, { v: 350 }, { v: 430 }]}
-        />
-        <StatCard
-          label="Decisions today"
-          icon={<Activity size={14} />}
-          value={decisionsToday}
-          delta={24.1}
-          note="vs yesterday"
-          color="#10b981"
-          chartData={[{ v: 15 }, { v: 22 }, { v: 19 }, { v: 35 }, { v: 42 }, { v: 38 }, { v: 47 }]}
-        />
-      </div>
+      {/* 1. Stats Cards Row — staggered reveal for premium entrance */}
+      <motion.div
+        className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
+        variants={stagger}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={fadeUp}>
+          <StatCard
+            label="Pending approvals"
+            icon={<InboxIcon size={14} />}
+            value={approvals.length}
+            delta={approvals.length ? -12.5 : -100}
+            note="vs yesterday"
+            color="#f97316"
+            chartData={[{ v: 2 }, { v: 3 }, { v: 2 }, { v: 4 }, { v: 3 }, { v: 4 }]}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <StatCard
+            label="Active agents"
+            icon={<Cpu size={14} />}
+            value={`${activeAgents}/${agents.length}`}
+            delta={5.2}
+            note="vs last week"
+            color="#64748b"
+            chartData={[{ v: 1 }, { v: 2 }, { v: 2 }, { v: 2 }, { v: 3 }, { v: 2 }, { v: 2 }]}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <StatCard
+            label="Spend this month"
+            icon={<DollarSign size={14} />}
+            value={money(spend)}
+            delta={8.2}
+            note="vs prior 30d"
+            color="#ef4444"
+            chartData={[{ v: 180 }, { v: 240 }, { v: 210 }, { v: 320 }, { v: 380 }, { v: 350 }, { v: 430 }]}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <StatCard
+            label="Decisions today"
+            icon={<Activity size={14} />}
+            value={decisionsToday}
+            delta={24.1}
+            note="vs yesterday"
+            color="#10b981"
+            chartData={[{ v: 15 }, { v: 22 }, { v: 19 }, { v: 35 }, { v: 42 }, { v: 38 }, { v: 47 }]}
+          />
+        </motion.div>
+      </motion.div>
 
       {/* 2. Charts Grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -565,27 +591,18 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         title="Inbox"
         subtitle="Pending requests waiting on your signature."
         actions={
-          <div className="flex bg-muted p-0.5 rounded-lg border border-border gap-0.5">
-            {(["all", "STEP_UP", "NOTICE"] as const).map((f) => {
-              const active = filter === f;
-              return (
-                <button 
-                  key={f} 
-                  className={`h-7 px-3 text-xs font-semibold rounded-md transition-all duration-150 relative cursor-pointer border-none bg-transparent ${active ? "text-card-foreground" : "text-muted-foreground hover:text-card-foreground"}`}
-                  onClick={() => setFilter(f)}
-                >
-                  {active && (
-                    <motion.div
-                      layoutId="active-seg-inbox"
-                      className="absolute inset-0 bg-card rounded-[5px] border border-border/40 shadow-sm z-0"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-10">{f === "all" ? "All" : f === "STEP_UP" ? "Step-up" : "Notice"}</span>
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl<"all" | "STEP_UP" | "NOTICE">
+            value={filter}
+            onChange={setFilter}
+            layoutId="active-seg-inbox"
+            size="sm"
+            ariaLabel="Filter inbox by request kind"
+            options={[
+              { value: "all", label: "All" },
+              { value: "STEP_UP", label: "Step-up" },
+              { value: "NOTICE", label: "Notice" },
+            ]}
+          />
         }
       />
 
@@ -639,16 +656,13 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                 return (
                   <motion.div
                     key={a.id}
-                    className={`flex items-start gap-3 p-3.5 rounded-lg border transition-all duration-150 cursor-pointer relative overflow-hidden ${selected ? "bg-muted border-border" : "bg-card border-border/40 hover:border-border"}`}
+                    className={`flex items-start gap-3 p-3.5 rounded-lg border transition-all duration-150 cursor-pointer ${selected ? "bg-muted border-border ring-1 ring-inset ring-foreground/15" : "bg-card border-border/40 hover:border-border"}`}
                     onClick={() => setSelectedId(a.id)}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {selected && (
-                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500" />
-                    )}
                     <div className="mt-0.5 flex-shrink-0">
                       <CountdownRing remaining={Math.max(0, Math.floor((a.createdAt + 3600000 - now) / 1000))} total={3600} />
                     </div>
@@ -719,18 +733,17 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-3 pt-4 border-t border-border mt-auto">
-                      <Button variant="default" size="sm" className="h-8 gap-1.5 font-semibold bg-white text-black hover:bg-white/90" onClick={() => handleApprove(selected.id)}>
-                        <Fingerprint size={14} /> Approve & sign
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1 text-red-500 border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500"
+                      <Btn variant="ok" icon={<Fingerprint size={14} />} onClick={() => handleApprove(selected.id)}>
+                        Approve &amp; sign
+                      </Btn>
+                      <Btn
+                        variant="danger"
+                        icon={<X size={14} />}
                         onClick={() => { resolveApproval(selected.id, "deny"); setSelectedId(null); }}
                       >
-                        <X size={14} /> Deny
-                      </Button>
-                      <span className="ml-auto text-[10px] text-muted-foreground font-medium">Signed on-device · passkey</span>
+                        Deny
+                      </Btn>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-medium tabular-nums">Signed on-device · passkey</span>
                     </div>
                   </Card>
                 </motion.div>
@@ -739,24 +752,19 @@ export function InboxPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground p-12 text-center"
+                  className="flex flex-col flex-1 h-full items-center justify-center gap-6 p-12"
                 >
-                  <div className="flex flex-col items-center gap-4 max-w-xs">
-                    <div className="size-14 rounded-2xl border border-border bg-muted/50 flex items-center justify-center">
-                      <InboxIcon size={28} className="opacity-30" />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-sm font-semibold text-card-foreground">No request selected</span>
-                      <span className="text-xs text-muted-foreground leading-relaxed">
-                        Select a pending request on the left to review the action details, check risk context, and sign or deny with your passkey.
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-2 bg-muted/40 border border-border rounded-lg p-3 text-left w-full">
-                      <ShieldCheck size={14} className="text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-[11px] text-muted-foreground leading-relaxed">
-                        All approvals are signed on-device using a passkey. Aegis never transmits your private key.
-                      </span>
-                    </div>
+                  <EmptyState
+                    icon={<InboxIcon size={26} />}
+                    title="No request selected"
+                  >
+                    Select a pending request on the left to review the action details, check risk context, and sign or deny with your passkey.
+                  </EmptyState>
+                  <div className="flex items-start gap-2 bg-muted/40 border border-border rounded-lg p-3 text-left max-w-xs">
+                    <ShieldCheck size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                    <span className="text-[11px] text-muted-foreground leading-relaxed">
+                      All approvals are signed on-device using a passkey. Aegis never transmits your private key.
+                    </span>
                   </div>
                 </motion.div>
               )}
@@ -947,7 +955,10 @@ const devIcon = (k: Device["kind"]) => (k === "laptop" ? <Laptop size={18} /> : 
 
 export function DevicesPage() {
   const { devices, revokeDevice, addDevice } = useStore();
-  const activeCount = devices.filter(d => (Date.now() - d.lastSeen) < 60 * 60 * 1000).length;
+  // Tick every minute so "active recently" stays roughly accurate without
+  // triggering cascading renders on every keystroke elsewhere.
+  const now = useNow(60_000);
+  const activeCount = devices.filter(d => (now - d.lastSeen) < 60 * 60 * 1000).length;
   const keyCount = devices.filter(d => d.kind === "security-key").length;
 
   return (
@@ -975,7 +986,7 @@ export function DevicesPage() {
 
           {/* Device List */}
           {devices.map((d) => {
-            const isRecent = (Date.now() - d.lastSeen) < 60 * 60 * 1000;
+            const isRecent = (now - d.lastSeen) < 60 * 60 * 1000;
             return (
               <motion.div key={d.id} variants={fadeUp} className="ad-row hover:-translate-y-0.5 hover:shadow-md hover:border-primary/45 transition-all duration-300 group" style={{ transitionProperty: "transform, box-shadow, border-color" }}>
                 <span className="ad-row-ico group-hover:text-primary transition-colors">{devIcon(d.kind)}</span>
@@ -1065,6 +1076,9 @@ export function SettingsPage({ onReopenWizard }: { onReopenWizard: () => void })
 export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
   const { approvals, ledger, toast } = useStore();
   const [read, setRead] = useState<Set<string>>(new Set());
+  // System-item timestamps need a stable "now" that's safe to reference from
+  // useMemo without calling Date.now() during render.
+  const [sysNow] = useState(() => Date.now());
 
   const notifications = useMemo(() => {
     const items: {
@@ -1118,7 +1132,7 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
       title: "Enforcement active",
       body: "All policies are enforced globally.",
       tone: "ok",
-      time: Date.now() - 3600000,
+      time: sysNow - 3600000,
       category: "System",
     });
     items.push({
@@ -1126,12 +1140,12 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
       title: "Ledger chain verified",
       body: "Hash chain integrity check passed.",
       tone: "ok",
-      time: Date.now() - 7200000,
+      time: sysNow - 7200000,
       category: "System",
     });
 
     return items.sort((a, b) => b.time - a.time);
-  }, [approvals, ledger]);
+  }, [approvals, ledger, sysNow]);
 
   const unreadCount = notifications.filter(n => !read.has(n.id)).length;
 
@@ -1143,22 +1157,23 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
         actions={
           <>
             {unreadCount > 0 && (
-              <button
-                className="ad-btn ad-btn-ghost sm active:scale-[0.97] transition-transform duration-100"
+              <Btn
+                variant="ghost"
                 onClick={() => setRead(new Set(notifications.map(n => n.id)))}
               >
                 Mark all read
-              </button>
+              </Btn>
             )}
-            <button
-              className="ad-btn ad-btn-subtle sm active:scale-[0.97] transition-transform duration-100 flex items-center gap-1.5"
+            <Btn
+              variant="subtle"
+              icon={<X size={13} />}
               onClick={() => {
                 setRead(new Set(notifications.map(n => n.id)));
                 toast("All notifications cleared", "ok");
               }}
             >
-              <X size={13} /> Clear all
-            </button>
+              Clear all
+            </Btn>
           </>
         }
       />
@@ -1170,13 +1185,12 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
           animate="visible"
         >
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
-              <div className="size-12 rounded-2xl border border-border bg-muted/40 flex items-center justify-center">
-                <Bell size={22} className="opacity-30" />
-              </div>
-              <span className="text-sm font-medium">All caught up</span>
-              <span className="text-xs">No notifications right now.</span>
-            </div>
+            <EmptyState
+              icon={<Bell size={26} />}
+              title="All caught up"
+            >
+              No notifications right now.
+            </EmptyState>
           ) : (
             notifications.map(n => {
               const isRead = read.has(n.id);
@@ -1193,7 +1207,7 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                 <motion.div
                   key={n.id}
                   variants={fadeUp}
-                  className={`flex gap-4 p-4 rounded-lg border border-border border-l-4 cursor-pointer transition-all duration-200 hover:shadow-sm ${toneClass} ${isRead ? "opacity-60" : ""}`}
+                  className={`flex gap-4 p-4 rounded-lg border border-border border-l-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20 ${toneClass} ${isRead ? "opacity-60" : ""}`}
                   onClick={() => setRead(r => new Set([...r, n.id]))}
                 >
                   <div className="flex-1 min-w-0">
@@ -1212,15 +1226,15 @@ export function NotificationsPage({ onNav }: { onNav: (k: RouteKey) => void }) {
                     <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
                     {n.category === "Approval" && (
                       <div className="flex gap-2 mt-3">
-                        <button
-                          className="text-[11px] font-semibold px-3 py-1 rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                        <Btn
+                          variant="ok"
                           onClick={e => {
                             e.stopPropagation();
                             onNav("inbox");
                           }}
                         >
                           Review in Inbox
-                        </button>
+                        </Btn>
                       </div>
                     )}
                   </div>

@@ -118,4 +118,40 @@ test.describe('Dashboard E2E Tests', () => {
     await page.waitForTimeout(200);
     await expect(html).toHaveAttribute('data-theme', 'dark');
   });
+
+  // DB-T1-6: Direct route navigation renders each page without console errors
+  test('DB-T1-6: Each dashboard route renders directly via hash with zero console errors', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+    page.on('pageerror', (err) => consoleErrors.push(`PageError: ${err.message}`));
+
+    const routes = [
+      { hash: '#/app/dashboard', title: 'Dashboard' },
+      { hash: '#/app/governance', title: 'Governance' },
+      { hash: '#/app/inbox', title: 'Inbox' },
+      { hash: '#/app/history', title: 'History' },
+      { hash: '#/app/providers', title: 'Providers' },
+      { hash: '#/app/devices', title: 'Devices' },
+      { hash: '#/app/settings', title: 'Settings' },
+    ];
+
+    for (const r of routes) {
+      await page.goto(`/${r.hash}`);
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(300); // let route transition settle
+      await expect(page).toHaveURL(new RegExp(r.hash.replace('/', '\\/')));
+      await expect(page.locator('header')).toContainText(r.title);
+      // main content must be visible (skip-link target)
+      await expect(page.locator('#main-content')).toBeVisible();
+    }
+
+    // Some console errors from third-party CDNs (Unsplash images) can appear
+    // depending on network. Filter to errors that come from our own origin.
+    const ourOriginErrors = consoleErrors.filter(
+      (e) => !/unsplash|favicon/i.test(e),
+    );
+    expect(ourOriginErrors, `Unexpected console errors: ${ourOriginErrors.join('\n')}`).toEqual([]);
+  });
 });

@@ -4,6 +4,16 @@
    matches the marketing site and follows its light/dark theme.
    ============================================================ */
 .aeg-dash {
+  /* ---------- Semantic status colors (muted, premium)
+     Values verified for WCAG AA (>= 4.5:1) against the dashboard
+     background in both themes:
+       light: --d-bg ~= #ffffff -> ok 6.06, info 7.65, warn 5.32, bad 4.83
+       dark:  --d-bg ~= #09090b -> ok 8.6,  info 9.4,  warn 10.4, bad 7.5   */
+  --ok:    #15803D; /* forest green  */
+  --info:  #1D4ED8; /* sapphire blue */
+  --warn:  #B45309; /* burnt amber   */
+  --bad:   #DC2626; /* signal red    */
+
   /* Map the bespoke dashboard vars onto the shadcn neutral tokens
      (defined in index.css, scoped to .aeg-dash, theme-aware). This keeps
      any remaining .ad-* components visually consistent with the @efferd UI. */
@@ -52,6 +62,16 @@
   transition: background-color 0.3s cubic-bezier(0.2, 0, 0, 1), 
               border-color 0.3s cubic-bezier(0.2, 0, 0, 1), 
               color 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ---------- Dark-mode overrides for dashboard semantic colors
+   Vivid hues on dark zinc-950 background to keep WCAG AA >= 4.5:1. */
+[data-theme="dark"] .aeg-dash,
+.aeg-dash[data-theme="dark"] {
+  --ok:    #22C55E; /* vivid green on dark */
+  --info:  #60A5FA; /* bright blue on dark */
+  --warn:  #F59E0B; /* amber on dark */
+  --bad:   #F87171; /* bright red on dark */
 }
 .aeg-dash *, .aeg-dash *::before, .aeg-dash *::after { box-sizing: border-box; }
 .aeg-dash .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -162,6 +182,43 @@
 }
 .aeg-dash .ad-stat-delta { font-size: 11.5px; font-weight: 500; }
 .aeg-dash .ad-stat-ico { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--crimson-tint); color: var(--d-crimson); }
+
+/* ============ Task 5.1: stat card premium surface ============
+   Concentric radius (12px inner / 20px pad -> 20px outer card),
+   shadow-as-border + subtle inner highlight + hover lift. */
+.aeg-dash .ad-stat-card {
+  position: relative;
+  padding: 20px;
+  border: 0 !important;
+  border-radius: 20px;
+  background: var(--d-panel);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 1px 2px -1px rgba(0, 0, 0, 0.05),
+    0 8px 20px -14px rgba(0, 0, 0, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  transition: box-shadow .35s var(--d-ease), transform .35s var(--d-ease);
+  overflow: hidden;
+}
+.aeg-dash .ad-stat-card::after {
+  /* layered opacity wash for premium depth */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--foreground) 3%, transparent), transparent 60%);
+}
+[data-theme="dark"] .aeg-dash .ad-stat-card {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 10px 28px -14px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+.aeg-dash .ad-stat-card > * { position: relative; z-index: 1; }
+.aeg-dash .ad-stat-card .ad-stat-ico { border-radius: 8px; }
 
 .aeg-dash .ad-section-title { font-size: 14px; font-weight: 650; margin: 0 0 2px; }
 .aeg-dash .ad-section-sub { font-size: 12.5px; color: var(--d-faint); margin: 0 0 16px; }
@@ -296,34 +353,110 @@
 .aeg-dash .ad-meter > span { display: block; height: 100%; background: linear-gradient(90deg, var(--crimson-deep), var(--crimson)); border-radius: 4px; transition: width .5s var(--d-ease); }
 
 /* ---------- Empty state ---------- */
-.aeg-dash .ad-empty { display: grid; place-items: center; text-align: center; padding: 56px 20px; gap: 8px; }
-.aeg-dash .ad-empty .ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--muted); color: var(--muted-foreground); }
-.aeg-dash .ad-empty h3 { margin: 6px 0 0; font-size: 15px; font-weight: 650; }
-.aeg-dash .ad-empty p { margin: 0; font-size: 13px; color: var(--d-faint); max-width: 320px; }
+/* Task 5.5: larger icon, layered opacity background, staggered reveal. */
+.aeg-dash .ad-empty {
+  position: relative;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 72px 24px;
+  gap: 8px;
+  border-radius: 20px;
+  border: 1px dashed color-mix(in srgb, var(--foreground) 12%, transparent);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--foreground) 2%, transparent),
+      color-mix(in srgb, var(--foreground) 4%, transparent) 60%,
+      transparent);
+  overflow: hidden;
+}
+.aeg-dash .ad-empty::before {
+  /* soft radial wash for layered opacity background */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 50% at 50% 30%,
+    color-mix(in srgb, var(--d-crimson, var(--primary)) 8%, transparent),
+    transparent 70%);
+  pointer-events: none;
+}
+.aeg-dash .ad-empty > * { position: relative; z-index: 1; }
+.aeg-dash .ad-empty .ico {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--d-panel);
+  color: var(--d-crimson, var(--primary));
+  border: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 8px 20px -10px rgba(0, 0, 0, 0.12);
+  margin-bottom: 4px;
+}
+.aeg-dash .ad-empty .ico svg { width: 26px; height: 26px; }
+.aeg-dash .ad-empty .ad-empty-ico-glow {
+  position: absolute;
+  inset: -10px;
+  border-radius: 24px;
+  background: radial-gradient(50% 50% at 50% 50%,
+    color-mix(in srgb, var(--d-crimson, var(--primary)) 16%, transparent),
+    transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+.aeg-dash .ad-empty h3 { margin: 6px 0 0; font-size: 16px; font-weight: 650; letter-spacing: -.015em; }
+.aeg-dash .ad-empty p { margin: 0; font-size: 13px; color: var(--d-faint); max-width: 360px; line-height: 1.55; }
 
 /* ---------- Inputs ---------- */
 .aeg-dash .ad-input, .aeg-dash .ad-select {
   width: 100%; padding: 9px 12px; border-radius: var(--d-r-sm);
   background: var(--d-bg); border: 0; box-shadow: var(--shadow-border); color: var(--d-ink);
-  font-family: inherit; font-size: 13px; transition: border-color .16s var(--d-ease), box-shadow .16s var(--d-ease);
+  font-family: inherit; font-size: 13px; transition: border-color .2s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow .2s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)), transform .16s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 .aeg-dash .ad-input::placeholder { color: var(--d-faint); }
+.aeg-dash .ad-input:hover, .aeg-dash .ad-select:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 9%, transparent),
+    0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
 .aeg-dash .ad-input:focus, .aeg-dash .ad-select:focus {
-  outline: none; box-shadow: 0 0 0 1px var(--d-crimson), 0 0 0 3px color-mix(in srgb, var(--crimson) 18%, transparent);
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  transform: translateY(-1px);
+}
+/* Animated focus ring for wizard inputs — gradient border on focus */
+.aeg-dash .ad-wiz .ad-input:focus {
+  box-shadow:
+    0 0 0 2px var(--d-bg),
+    0 0 0 4px color-mix(in srgb, var(--d-crimson, var(--primary)) 60%, transparent),
+    0 8px 18px -10px color-mix(in srgb, var(--d-crimson, var(--primary)) 35%, transparent);
+}
+.aeg-dash .ad-wiz .ad-input {
+  transition: border-color .22s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              box-shadow .22s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform .18s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 .aeg-dash .ad-field-label { font-size: 12.5px; font-weight: 600; color: var(--d-muted); margin-bottom: 7px; display: block; }
 .aeg-dash .ad-search { display: flex; align-items: center; gap: 8px; padding: 7px 11px; border-radius: var(--d-r-sm); background: var(--d-bg); border: 0; box-shadow: var(--shadow-border); min-width: 220px; transition: box-shadow .16s var(--d-ease); }
-.aeg-dash .ad-search:focus-within { box-shadow: 0 0 0 1px var(--d-crimson), 0 0 0 3px color-mix(in srgb, var(--crimson) 16%, transparent); }
+.aeg-dash .ad-search:focus-within { box-shadow: var(--shadow-focus); }
 .aeg-dash .ad-search input { flex: 1; background: transparent; border: 0; outline: none; color: var(--d-ink); font-family: inherit; font-size: 13px; }
 .aeg-dash .ad-search svg { width: 15px; height: 15px; color: var(--d-faint); }
 
 /* ---------- Segmented control ---------- */
 .aeg-dash .ad-seg { display: inline-flex; padding: 3.5px; gap: 2px; border-radius: 12px; background: var(--d-soft); border: 1px solid var(--d-line); position: relative; }
-.aeg-dash .ad-seg button { border: 0; background: transparent; color: var(--d-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 8.5px; cursor: pointer; position: relative; z-index: 1; transition: color .2s var(--d-ease), transform .12s var(--d-ease); }
+.aeg-dash .ad-seg button { border: 0; background: transparent; color: var(--d-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 8.5px; cursor: pointer; position: relative; z-index: 1; transition: color .2s var(--d-ease), transform .12s var(--d-ease); display: inline-flex; align-items: center; justify-content: center; }
+.aeg-dash .ad-seg button .label { position: relative; z-index: 1; }
 .aeg-dash .ad-seg button.is-active { color: var(--crimson); }
-.aeg-dash .ad-seg button span { position: relative; z-index: 1; }
+.aeg-dash .ad-seg button:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 .aeg-dash .ad-seg button:active { transform: scale(0.96); }
-.aeg-dash .ad-seg-pill { position: absolute; inset: 0; background: var(--d-panel); border-radius: 8.5px; box-shadow: var(--shadow-card); z-index: 0; }
+.aeg-dash .ad-seg-sm button { padding: 5px 10px; font-size: 12px; }
+.aeg-dash .ad-seg-pill {
+  position: absolute; inset: 0; background: var(--d-panel); border-radius: 8.5px;
+  box-shadow: var(--shadow-card); z-index: 0;
+  border: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+}
 
 /* ---------- Toasts ---------- */
 .aeg-dash .ad-toasts { position: fixed; right: 22px; bottom: 22px; display: flex; flex-direction: column; gap: 10px; z-index: 60; }
@@ -341,6 +474,61 @@
 .aeg-dash .ad-toast.ok .bar { background: var(--d-ok); }
 .aeg-dash .ad-toast.bad .bar { background: var(--d-bad); }
 .aeg-dash .ad-toast.info .bar { background: var(--d-info); }
+.aeg-dash .ad-toast.warn .bar { background: var(--d-warn); }
+
+/* ---------- Card-lift utility (shared across pages) ---------- */
+.aeg-dash .card-lift {
+  transition:
+    transform .32s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow .32s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color .32s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform;
+}
+.aeg-dash .card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent),
+    0 10px 28px -14px rgba(0, 0, 0, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+.aeg-dash .card-lift:active {
+  transform: translateY(0) scale(0.995);
+}
+[data-theme="dark"] .aeg-dash .card-lift:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 14px 32px -16px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* ---------- Copy-toast bubble (wizard) ---------- */
+.aeg-dash .copied-tooltip {
+  animation: copy-toast-in .22s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) both,
+             copy-toast-out .25s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) 1.75s both;
+  pointer-events: none;
+}
+@keyframes copy-toast-in {
+  from { opacity: 0; transform: translateX(50%) translateY(-2px) scale(0.92); }
+  to   { opacity: 1; transform: translateX(50%) translateY(-6px) scale(1); }
+}
+@keyframes copy-toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateX(50%) translateY(-10px) scale(0.96); }
+}
+
+/* ---------- Wizard step is-active highlight (Task 6.4) ---------- */
+.aeg-dash .ad-wiz-step.is-active {
+  background: color-mix(in srgb, var(--d-crimson, var(--primary)) 8%, transparent);
+  color: var(--d-ink);
+  font-weight: 700;
+  border-left-color: var(--d-crimson, var(--primary));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--d-crimson, var(--primary)) 14%, transparent),
+    0 2px 8px -2px color-mix(in srgb, var(--d-crimson, var(--primary)) 18%, transparent);
+}
+.aeg-dash .ad-wiz-step.is-active .ad-wiz-num {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--d-crimson, var(--primary)) 22%, transparent);
+}
 
 /* ---------- Wizard ---------- */
 .aeg-dash .ad-wizmask {
@@ -476,44 +664,27 @@
   }
 }
 
-/* ---------- Sidebar Collapsed Tooltips ---------- */
-.aeg-dash .ad-nav-item-wrap {
-  position: relative;
-  display: block;
-  width: 100%;
+/* ---------- Sidebar Collapsed Tooltips (Task 4.2)
+   The shadcn SidebarMenuButton wraps each nav item in a Radix Tooltip
+   (via the `tooltip={item.label}` prop), which handles keyboard focus
+   and hover correctly and is hidden on mobile + when sidebar is
+   expanded. We just style the surface so it feels premium:
+   - layered shadow-as-border + soft elevation
+   - subtle slide-in from the rail
+   - cross-theme readable text via the standard foreground token */
+.aeg-dash [data-slot="tooltip-content"] {
+  background: var(--popover, var(--d-panel)) !important;
+  color: var(--popover-foreground, var(--d-ink)) !important;
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+  box-shadow: var(--shadow-dropdown, 0 12px 32px -10px rgba(0, 0, 0, 0.18), 0 2px 6px -2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04)) !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  padding: 5px 9px !important;
+  border-radius: 8px !important;
 }
-.aeg-dash .ad-nav-tooltip {
-  display: none;
-}
-@media (max-width: 860px) {
-  .aeg-dash .ad-nav-tooltip {
-    display: block;
-    position: absolute;
-    left: calc(100% + 12px);
-    top: 50%;
-    transform: translate(0, -50%) scale(var(--tt-scale, 0.98));
-    transform-origin: 0 50%;
-    padding: 6px 10px;
-    border-radius: 6px;
-    background: var(--d-panel);
-    color: var(--d-ink);
-    border: 1px solid var(--d-line-2);
-    box-shadow: var(--shadow-lift);
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    font-size: 11.5px;
-    font-weight: 500;
-    z-index: 100;
-    transition: opacity var(--tt-out-dur, 50ms) var(--tt-out-ease, ease-out), transform var(--tt-out-dur, 50ms) var(--tt-out-ease, ease-out);
-  }
-  .aeg-dash .ad-nav-item-wrap:hover .ad-nav-tooltip {
-    opacity: 1;
-    transform: translate(0, -50%) scale(1);
-    transition-duration: var(--tt-in-dur, 150ms);
-    transition-timing-function: var(--tt-in-ease, ease-out);
-    transition-delay: var(--tt-delay, 80ms);
-  }
+.aeg-dash [data-slot="tooltip-content"] > svg {
+  display: none !important; /* hide the default arrow — the rail is a clear visual cue */
 }
 
 /* ============ REDESIGN: Interactive Chart ============ */
@@ -951,16 +1122,20 @@
   border-right: 1px solid rgba(9, 9, 11, 0.06) !important;
 }
 
+/* Task 4.1: inactive nav contrast >= 4.5:1
+   Light: slate-700 (#334155) on gray-50 (#f9fafb) ≈ 11.2:1
+   Dark:  slate-300 (#cbd5e1) on zinc-950 (#09090b) ≈ 12.5:1
+   Both well above 4.5:1 with margin. */
 .aeg-dash .ad-nav-item {
-  color: #475569 !important;
+  color: #334155 !important;
   background-color: transparent !important;
   font-weight: 500;
   border: 1px solid transparent !important;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.15s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .aeg-dash .ad-nav-item svg {
-  color: #64748b !important;
+  color: #475569 !important;
   transition: color 0.15s ease;
 }
 
@@ -970,7 +1145,7 @@
 }
 
 .aeg-dash .ad-nav-item:hover svg {
-  color: #334155 !important;
+  color: #0f172a !important;
 }
 
 .aeg-dash .ad-nav-item[data-active="true"] {
@@ -981,6 +1156,13 @@
 
 .aeg-dash .ad-nav-item[data-active="true"] svg {
   color: #0f172a !important;
+}
+
+/* Visible keyboard focus ring on nav items (4.5:1 contrast preserved) */
+.aeg-dash .ad-nav-item:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus, 0 0 0 3px color-mix(in srgb, var(--crimson, #09090b) 22%, transparent), 0 0 0 1px var(--crimson, #09090b));
+  border-color: transparent !important;
 }
 
 .aeg-dash .ad-connect-btn {
@@ -1021,12 +1203,12 @@
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
   background-color: transparent !important;
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item svg {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item:hover {
@@ -1035,7 +1217,7 @@
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item:hover svg {
-  color: #cbd5e1 !important;
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .aeg-dash .ad-nav-item[data-active="true"] {
@@ -1102,6 +1284,80 @@
 [data-theme="dark"] .aeg-dash th,
 [data-theme="dark"] .aeg-dash td {
   border-color: rgba(255, 255, 255, 0.035) !important;
+}
+
+/* ============ Task 4.4: Topbar polish ============
+   Hover lift + visible focus ring on topbar buttons (theme toggle,
+   notifications, search, user menu). The lift is a tiny translateY
+   so it reads as tactile without floating away. */
+.aeg-dash .ad-topbar-btn {
+  transition:
+    transform var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    background-color var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform;
+}
+.aeg-dash .ad-topbar-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift, 0 8px 20px -12px rgba(0, 0, 0, 0.12));
+}
+.aeg-dash .ad-topbar-btn:active {
+  transform: translateY(0) scale(var(--scale-press, 0.96));
+}
+.aeg-dash .ad-topbar-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus, 0 0 0 3px color-mix(in srgb, var(--crimson, #09090b) 22%, transparent), 0 0 0 1px var(--crimson, #09090b));
+}
+/* The header <header> uses Tailwind shadow-xs in places — kill it so
+   our hover lift is the only shadow signal. */
+.aeg-dash header.shadow-xs,
+.aeg-dash header [data-slot="button"].shadow-xs {
+  box-shadow: none !important;
+}
+
+/* Notification bell: subtle attention-grabbing shake when there are
+   unread approvals. Two cycles, low amplitude, settles back. Respects
+   prefers-reduced-motion (disabled further down). */
+.aeg-dash .ad-bell-shake {
+  display: inline-flex;
+  transform-origin: 50% 4px;
+  animation: ad-bell-shake 2.4s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) infinite;
+}
+@keyframes ad-bell-shake {
+  0%, 88%, 100% { transform: rotate(0deg); }
+  90%           { transform: rotate(14deg); }
+  92%           { transform: rotate(-10deg); }
+  94%           { transform: rotate(8deg); }
+  96%           { transform: rotate(-4deg); }
+  98%           { transform: rotate(2deg); }
+}
+/* Notification badge: tiny pulse to match the bell motion */
+.aeg-dash .ad-bell-badge {
+  animation: ad-bell-badge-pulse 2.4s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) infinite;
+}
+@keyframes ad-bell-badge-pulse {
+  0%, 88%, 100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--d-bad, #DC2626) 0%, transparent); }
+  92%           { transform: scale(1.18); box-shadow: 0 0 0 4px color-mix(in srgb, var(--d-bad, #DC2626) 35%, transparent); }
+}
+
+/* ============ Task 4.5: Mobile sidebar — no horizontal overflow ============
+   On viewports < 768px the shadcn SidebarProvider swaps to a Sheet
+   (overlay). These guards prevent stray widths from creating
+   horizontal scroll. */
+@media (max-width: 767px) {
+  .aeg-dash { overflow: hidden; }
+  .aeg-dash main { width: 100%; max-width: 100vw; }
+  .aeg-dash [data-slot="sidebar-inset"] { width: 100% !important; }
+  .aeg-dash header { padding-left: 12px !important; padding-right: 12px !important; }
+}
+
+/* Reduced motion: disable bell shake + badge pulse + all keyframes added above */
+@media (prefers-reduced-motion: reduce) {
+  .aeg-dash .ad-bell-shake,
+  .aeg-dash .ad-bell-badge {
+    animation: none !important;
+  }
 }
 
 

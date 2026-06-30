@@ -81,23 +81,84 @@ export function StatCard({
 }) {
   const deltaColor = deltaTone === "ok" ? "var(--d-ok)" : deltaTone === "bad" ? "var(--d-bad)" : "var(--d-faint)";
   return (
-    <div className="ad-card pad ad-rise">
+    <div className="ad-stat-card card-lift ad-rise">
       <div className="ad-stat-label">
         <span className="ad-stat-ico">{icon}</span>
         {label}
       </div>
-      <div className="ad-stat-value tnum">{value}</div>
-      {delta && <div className="ad-stat-delta" style={{ color: deltaColor }}>{delta}</div>}
+      <div className="ad-stat-value font-tabular">{value}</div>
+      {delta && <div className="ad-stat-delta font-tabular" style={{ color: deltaColor }}>{delta}</div>}
     </div>
   );
 }
 
 export function EmptyState({ icon, title, children }: { icon: React.ReactNode; title: string; children?: React.ReactNode }) {
+  // Staggered reveal: icon, title, description each animate in sequence.
+  const reveal = (delay: number) => ({
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const, delay },
+  });
   return (
     <div className="ad-empty">
-      <div className="ico">{icon}</div>
-      <h3>{title}</h3>
-      {children && <p>{children}</p>}
+      <motion.div className="ico" {...reveal(0)}>
+        <span className="ad-empty-ico-glow" aria-hidden />
+        {icon}
+      </motion.div>
+      <motion.h3 {...reveal(0.08)}>{title}</motion.h3>
+      {children && <motion.p {...reveal(0.16)}>{children}</motion.p>}
+    </div>
+  );
+}
+
+/* ============================================================
+   Segmented control with sliding active pill (Framer Motion)
+   ============================================================ */
+export function SegmentedControl<T extends string>({
+  value,
+  onChange,
+  options,
+  layoutId,
+  size = "md",
+  ariaLabel,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: React.ReactNode }[];
+  /** Unique layoutId so multiple segmented controls don't share the pill. */
+  layoutId: string;
+  size?: "sm" | "md";
+  ariaLabel?: string;
+}) {
+  return (
+    <div
+      className={`ad-seg ad-seg-${size}`}
+      role="tablist"
+      aria-label={ariaLabel}
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            tabIndex={active ? 0 : -1}
+            className={active ? "is-active" : ""}
+            onClick={() => onChange(o.value)}
+          >
+            {active && (
+              <motion.span
+                layoutId={layoutId}
+                className="ad-seg-pill"
+                transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.7 }}
+              />
+            )}
+            <span className="label">{o.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -132,11 +193,15 @@ export function Toasts() {
             key={t.id}
             className={`ad-toast ${t.tone}`}
             onClick={() => dismissToast(t.id)}
+            role="status"
+            aria-live="polite"
             style={{ cursor: "pointer" }}
-            initial={{ opacity: 0, x: 24, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.92 }}
-            transition={{ type: "spring", duration: 0.32, bounce: 0 }}
+            initial={{ opacity: 0, y: 16, scale: 0.96, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -8, scale: 0.96, filter: "blur(2px)" }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
           >
             <span className="bar" />
             {t.msg}
@@ -358,6 +423,7 @@ export function PolicyComposer({ onClose, onSubmit }: { onClose: () => void; onS
   const [name, setName] = useState("");
   const [limit, setLimit] = useState(500);
   const [signIdx, setSignIdx] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (step === "signing") {
@@ -374,6 +440,46 @@ export function PolicyComposer({ onClose, onSubmit }: { onClose: () => void; onS
       return () => clearInterval(id);
     }
   }, [step]);
+
+  // ESC to close + focus trap inside the dialog. Skip when the signing
+  // animation is running so users don't accidentally dismiss mid-sign.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && step !== "signing") {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    // Move initial focus into the dialog.
+    const t = window.setTimeout(() => {
+      const target = dialogRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, [tabindex]:not([tabindex="-1"])'
+      );
+      target?.focus();
+    }, 30);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      clearTimeout(t);
+    };
+  }, [onClose, step]);
 
   const handleSign = () => {
     setSignIdx(0);
@@ -395,14 +501,18 @@ export function PolicyComposer({ onClose, onSubmit }: { onClose: () => void; onS
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <motion.div
+        ref={dialogRef}
         className="ad-composer"
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="policy-composer-title"
+        initial={{ opacity: 0, scale: 0.92, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 6 }}
+        transition={{ type: "spring", duration: 0.32, bounce: 0.12 }}
       >
         <div className="ad-composer-header">
-          <h2><ShieldCheck size={18} style={{ verticalAlign: -3, marginRight: 8 }} />New Mandate</h2>
+          <h2 id="policy-composer-title"><ShieldCheck size={18} style={{ verticalAlign: -3, marginRight: 8 }} />New Mandate</h2>
           <button className="ad-iconbtn" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
 
