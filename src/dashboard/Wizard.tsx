@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   X, ArrowRight, ArrowLeft, Check, KeyRound, Cpu, Plug, Copy,
 } from "lucide-react";
@@ -18,6 +18,36 @@ const STEPS = [
 export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFinish: () => void; onNav: (k: RouteKey) => void }) {
   const { providers, toggleProvider, updateSettings, addDevice, toast } = useStore();
   const [step, setStep] = useState(() => Number(localStorage.getItem("aeg-dash-wizard-step") || "0"));
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // ESC to close + focus trap inside the wizard panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const setStepPersisted = (s: number | ((prev: number) => number)) => {
     setStep((prev) => {
@@ -54,13 +84,15 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
       transition={{ duration: 0.2 }}
     >
       <motion.div
+        ref={dialogRef}
         className="ad-wiz"
         role="dialog"
+        aria-modal="true"
         aria-label="Aegis setup wizard"
-        initial={{ opacity: 0, scale: 0.95, y: 8 }}
+        initial={{ opacity: 0, scale: 0.94, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 8 }}
-        transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 6 }}
+        transition={{ type: "spring", duration: 0.36, bounce: 0.12 }}
       >
         <div className="ad-wiz-rail">
           <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2px 4px 18px" }}>

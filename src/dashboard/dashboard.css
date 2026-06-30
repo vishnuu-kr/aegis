@@ -414,11 +414,29 @@
 .aeg-dash .ad-input, .aeg-dash .ad-select {
   width: 100%; padding: 9px 12px; border-radius: var(--d-r-sm);
   background: var(--d-bg); border: 0; box-shadow: var(--shadow-border); color: var(--d-ink);
-  font-family: inherit; font-size: 13px; transition: border-color .16s var(--d-ease), box-shadow .16s var(--d-ease);
+  font-family: inherit; font-size: 13px; transition: border-color .2s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow .2s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)), transform .16s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 .aeg-dash .ad-input::placeholder { color: var(--d-faint); }
+.aeg-dash .ad-input:hover, .aeg-dash .ad-select:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 9%, transparent),
+    0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
 .aeg-dash .ad-input:focus, .aeg-dash .ad-select:focus {
-  outline: none; box-shadow: var(--shadow-focus);
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  transform: translateY(-1px);
+}
+/* Animated focus ring for wizard inputs — gradient border on focus */
+.aeg-dash .ad-wiz .ad-input:focus {
+  box-shadow:
+    0 0 0 2px var(--d-bg),
+    0 0 0 4px color-mix(in srgb, var(--d-crimson, var(--primary)) 60%, transparent),
+    0 8px 18px -10px color-mix(in srgb, var(--d-crimson, var(--primary)) 35%, transparent);
+}
+.aeg-dash .ad-wiz .ad-input {
+  transition: border-color .22s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              box-shadow .22s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform .18s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 .aeg-dash .ad-field-label { font-size: 12.5px; font-weight: 600; color: var(--d-muted); margin-bottom: 7px; display: block; }
 .aeg-dash .ad-search { display: flex; align-items: center; gap: 8px; padding: 7px 11px; border-radius: var(--d-r-sm); background: var(--d-bg); border: 0; box-shadow: var(--shadow-border); min-width: 220px; transition: box-shadow .16s var(--d-ease); }
@@ -457,6 +475,60 @@
 .aeg-dash .ad-toast.bad .bar { background: var(--d-bad); }
 .aeg-dash .ad-toast.info .bar { background: var(--d-info); }
 .aeg-dash .ad-toast.warn .bar { background: var(--d-warn); }
+
+/* ---------- Card-lift utility (shared across pages) ---------- */
+.aeg-dash .card-lift {
+  transition:
+    transform .32s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow .32s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color .32s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform;
+}
+.aeg-dash .card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent),
+    0 10px 28px -14px rgba(0, 0, 0, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+.aeg-dash .card-lift:active {
+  transform: translateY(0) scale(0.995);
+}
+[data-theme="dark"] .aeg-dash .card-lift:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 14px 32px -16px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* ---------- Copy-toast bubble (wizard) ---------- */
+.aeg-dash .copied-tooltip {
+  animation: copy-toast-in .22s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) both,
+             copy-toast-out .25s var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)) 1.75s both;
+  pointer-events: none;
+}
+@keyframes copy-toast-in {
+  from { opacity: 0; transform: translateX(50%) translateY(-2px) scale(0.92); }
+  to   { opacity: 1; transform: translateX(50%) translateY(-6px) scale(1); }
+}
+@keyframes copy-toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateX(50%) translateY(-10px) scale(0.96); }
+}
+
+/* ---------- Wizard step is-active highlight (Task 6.4) ---------- */
+.aeg-dash .ad-wiz-step.is-active {
+  background: color-mix(in srgb, var(--d-crimson, var(--primary)) 8%, transparent);
+  color: var(--d-ink);
+  font-weight: 700;
+  border-left-color: var(--d-crimson, var(--primary));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--d-crimson, var(--primary)) 14%, transparent),
+    0 2px 8px -2px color-mix(in srgb, var(--d-crimson, var(--primary)) 18%, transparent);
+}
+.aeg-dash .ad-wiz-step.is-active .ad-wiz-num {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--d-crimson, var(--primary)) 22%, transparent);
+}
 
 /* ---------- Wizard ---------- */
 .aeg-dash .ad-wizmask {
