@@ -81,23 +81,84 @@ export function StatCard({
 }) {
   const deltaColor = deltaTone === "ok" ? "var(--d-ok)" : deltaTone === "bad" ? "var(--d-bad)" : "var(--d-faint)";
   return (
-    <div className="ad-card pad ad-rise">
+    <div className="ad-stat-card card-lift ad-rise">
       <div className="ad-stat-label">
         <span className="ad-stat-ico">{icon}</span>
         {label}
       </div>
-      <div className="ad-stat-value tnum">{value}</div>
-      {delta && <div className="ad-stat-delta" style={{ color: deltaColor }}>{delta}</div>}
+      <div className="ad-stat-value font-tabular">{value}</div>
+      {delta && <div className="ad-stat-delta font-tabular" style={{ color: deltaColor }}>{delta}</div>}
     </div>
   );
 }
 
 export function EmptyState({ icon, title, children }: { icon: React.ReactNode; title: string; children?: React.ReactNode }) {
+  // Staggered reveal: icon, title, description each animate in sequence.
+  const reveal = (delay: number) => ({
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const, delay },
+  });
   return (
     <div className="ad-empty">
-      <div className="ico">{icon}</div>
-      <h3>{title}</h3>
-      {children && <p>{children}</p>}
+      <motion.div className="ico" {...reveal(0)}>
+        <span className="ad-empty-ico-glow" aria-hidden />
+        {icon}
+      </motion.div>
+      <motion.h3 {...reveal(0.08)}>{title}</motion.h3>
+      {children && <motion.p {...reveal(0.16)}>{children}</motion.p>}
+    </div>
+  );
+}
+
+/* ============================================================
+   Segmented control with sliding active pill (Framer Motion)
+   ============================================================ */
+export function SegmentedControl<T extends string>({
+  value,
+  onChange,
+  options,
+  layoutId,
+  size = "md",
+  ariaLabel,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: React.ReactNode }[];
+  /** Unique layoutId so multiple segmented controls don't share the pill. */
+  layoutId: string;
+  size?: "sm" | "md";
+  ariaLabel?: string;
+}) {
+  return (
+    <div
+      className={`ad-seg ad-seg-${size}`}
+      role="tablist"
+      aria-label={ariaLabel}
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            tabIndex={active ? 0 : -1}
+            className={active ? "is-active" : ""}
+            onClick={() => onChange(o.value)}
+          >
+            {active && (
+              <motion.span
+                layoutId={layoutId}
+                className="ad-seg-pill"
+                transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.7 }}
+              />
+            )}
+            <span className="label">{o.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -132,11 +193,15 @@ export function Toasts() {
             key={t.id}
             className={`ad-toast ${t.tone}`}
             onClick={() => dismissToast(t.id)}
+            role="status"
+            aria-live="polite"
             style={{ cursor: "pointer" }}
-            initial={{ opacity: 0, x: 24, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.92 }}
-            transition={{ type: "spring", duration: 0.32, bounce: 0 }}
+            initial={{ opacity: 0, y: 16, scale: 0.96, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -8, scale: 0.96, filter: "blur(2px)" }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
           >
             <span className="bar" />
             {t.msg}
