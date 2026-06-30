@@ -203,6 +203,7 @@ function AegisSidebar({ route, onOpenWizard, dark, toggleTheme }: {
             src={dark ? "/logo_bgremoved_inverted.png" : "/logo_bgremoved.png"}
             alt="AgentTag"
             className="h-5 w-auto"
+            style={{ filter: dark ? "grayscale(1) brightness(10)" : "grayscale(1) brightness(0)" }}
           />
           <span className="font-semibold tracking-tight group-data-[collapsible=icon]:hidden">AgentTag</span>
         </a>
@@ -432,25 +433,33 @@ function Shell() {
             onOpenSearch={() => setSearchOpen(true)}
           />
           <main id="main-content" className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <motion.div
-              key={route}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.08, ease: "easeOut" }}
-              className="flex h-full min-h-0 flex-1 flex-col"
-            >
-              {route === "governance" && <GovernancePage />}
-              {route === "dashboard" && <OverviewPage onNav={nav} />}
-              {route === "inbox" && <InboxPage onNav={nav} />}
-              {route === "history" && <HistoryPage />}
-              {route === "providers" && <ProvidersPage />}
-              {route === "devices" && <DevicesPage />}
-              {route === "settings" && <SettingsPage onReopenWizard={() => setWizardOpen(true)} />}
-              {route === "support" && <SupportPage />}
-              {route === "notifications" && <NotificationsPage onNav={nav} />}
-              {route === "profile" && <ProfilePage />}
-              {route === "help" && <HelpPage />}
-            </motion.div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={route}
+                initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.998 }}
+                transition={{
+                  duration: 0.22,
+                  ease: [0.22, 1, 0.36, 1], // var(--ease-smooth-out)
+                  opacity: { duration: 0.18 },
+                  scale: { duration: 0.22 },
+                }}
+                className="flex h-full min-h-0 flex-1 flex-col"
+              >
+                {route === "governance" && <GovernancePage />}
+                {route === "dashboard" && <OverviewPage onNav={nav} />}
+                {route === "inbox" && <InboxPage onNav={nav} />}
+                {route === "history" && <HistoryPage />}
+                {route === "providers" && <ProvidersPage />}
+                {route === "devices" && <DevicesPage />}
+                {route === "settings" && <SettingsPage onReopenWizard={() => setWizardOpen(true)} />}
+                {route === "support" && <SupportPage />}
+                {route === "notifications" && <NotificationsPage onNav={nav} />}
+                {route === "profile" && <ProfilePage />}
+                {route === "help" && <HelpPage />}
+              </motion.div>
+            </AnimatePresence>
           </main>
         </SidebarInset>
       </SidebarProvider>
