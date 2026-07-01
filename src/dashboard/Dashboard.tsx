@@ -8,8 +8,9 @@ import {
 import "./dashboard.css";
 import { StoreProvider, useStore } from "./data";
 import { Toasts } from "./ui";
-import { GovernancePage, OverviewPage, InboxPage, HistoryPage, ProvidersPage, DevicesPage, SettingsPage, NotificationsPage, ProfilePage, SupportPage, HelpPage } from "./pages";
+import { GovernancePage, OverviewPage, InboxPage, HistoryPage, ProvidersPage, DevicesPage, SettingsPage, SettingsOverview, SettingsAccountPage, SettingsWorkspacePage, SettingsAuditPage, SettingsNotificationsPage, SettingsIntegrationsPage, NotificationsPage, ProfilePage, SupportPage, HelpPage } from "./pages";
 import { Wizard } from "./Wizard";
+import { CommandPalette, useCommandKShortcut } from "./CommandPalette";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
@@ -22,11 +23,32 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { getStored, setStored, removeStored } from "@/lib/storage";
-import type { LedgerEntry } from "./data";
 
 export type RouteKey =
   | "dashboard" | "governance" | "inbox" | "history" | "providers" | "devices" | "settings" | "support"
   | "notifications" | "profile" | "help";
+
+export type SettingsSubpath =
+  | "overview"
+  | "security"
+  | "account"
+  | "workspace"
+  | "notifications"
+  | "integrations"
+  | "audit";
+
+const SETTINGS_SUBPATHS: SettingsSubpath[] = [
+  "overview", "security", "account", "workspace", "notifications", "integrations", "audit",
+];
+
+/** Returns the settings sub-path (or null) for the current hash. */
+export function parseSettingsSubpath(): SettingsSubpath | null {
+  const h = window.location.hash.replace(/^#\/?app\/?/, "").replace(/^#\/?/, "");
+  const parts = h.split(/[/?]/);
+  if (parts[0] !== "settings") return null;
+  const sub = parts[1] || "overview";
+  return (SETTINGS_SUBPATHS as readonly string[]).includes(sub) ? (sub as SettingsSubpath) : "overview";
+}
 
 const ROUTES: RouteKey[] = [
   "dashboard", "governance", "inbox", "history", "providers", "devices", "settings", "support",
@@ -78,107 +100,6 @@ function useTheme(): [boolean, () => void] {
     setStored("aeg-theme", next ? "dark" : "light");
   };
   return [dark, toggle];
-}
-
-// ============================================================
-// Search Modal
-// ============================================================
-function SearchModal({ open, onClose, nav, ledger }: {
-  open: boolean;
-  onClose: () => void;
-  nav: (k: RouteKey) => void;
-  ledger: LedgerEntry[];
-}) {
-  const [q, setQ] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  // Reset query when modal opens
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (open) setQ("");
-  }, [open]);
-
-  const results = q.trim() === "" ? [] : ledger
-    .filter(e => (e.action + " " + e.agent).toLowerCase().includes(q.toLowerCase()))
-    .slice(0, 5);
-
-  const QUICK_LINKS: { label: string; key: RouteKey; icon: string }[] = [
-    { label: "Dashboard", key: "dashboard", icon: "⬛" },
-    { label: "Inbox", key: "inbox", icon: "📥" },
-    { label: "Governance", key: "governance", icon: "🛡️" },
-    { label: "History", key: "history", icon: "📋" },
-    { label: "Settings", key: "settings", icon: "⚙️" },
-  ];
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-lg rounded-xl border border-border bg-card shadow-2xl overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-          <Search size={15} className="text-muted-foreground shrink-0" />
-          <input
-            autoFocus
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder="Search pages, actions, agents…"
-            className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground"
-          />
-          <kbd className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">ESC</kbd>
-        </div>
-        {/* Results or quick links */}
-        <div className="p-2 max-h-80 overflow-y-auto">
-          {q.trim() === "" ? (
-            <>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-2 py-1.5">
-                Quick navigation
-              </p>
-              {QUICK_LINKS.map(link => (
-                <button
-                  key={link.key}
-                  onClick={() => { nav(link.key); onClose(); }}
-                  className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
-                >
-                  <span className="text-base">{link.icon}</span>
-                  <span className="font-medium">{link.label}</span>
-                </button>
-              ))}
-            </>
-          ) : results.length > 0 ? (
-            <>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-2 py-1.5">
-                Results
-              </p>
-              {results.map(r => (
-                <button
-                  key={r.seq}
-                  onClick={() => { nav("history"); onClose(); }}
-                  className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
-                >
-                  <span className="font-medium truncate">{r.action}</span>
-                  <span className="ml-auto text-muted-foreground text-xs shrink-0">{r.agent}</span>
-                </button>
-              ))}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm">
-              No results for &ldquo;{q}&rdquo;
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ============================================================
@@ -299,17 +220,8 @@ function AegisHeader({
 }) {
   const { approvals } = useStore();
 
-  // Cmd+K / Ctrl+K keyboard shortcut
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        onOpenSearch();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onOpenSearch]);
+  // Cmd+K / Ctrl+K keyboard shortcut (centralized via the palette hook)
+  useCommandKShortcut(onOpenSearch);
 
   // Suppress unused warning for dark/toggleTheme (used via props)
   void dark;
@@ -336,15 +248,16 @@ function AegisHeader({
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
         <button
           onClick={onOpenSearch}
-          aria-label="Open search"
-          className="ad-topbar-btn flex h-8 w-64 items-center justify-between rounded-lg border border-zinc-200/40 bg-zinc-50/50 px-3 text-xs text-muted-foreground hover:bg-zinc-100/50 dark:border-zinc-800/40 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80 transition-colors"
+          aria-label="Open command palette"
+          aria-keyshortcuts="Meta+K Control+K"
+          className="ad-topbar-btn is-cmdk flex h-8 w-64 items-center justify-between rounded-lg px-3 text-xs transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <Search size={13} />
-            <span>Search or ask agent...</span>
+            <span>Search actions, pages, agents…</span>
           </span>
-          <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-zinc-200 bg-muted px-1.5 font-mono text-[9px] font-medium opacity-100 dark:border-zinc-800">
-            <span className="text-[10px]">⌘</span>K
+          <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded px-1.5">
+            <span>⌘</span>K
           </kbd>
         </button>
       </div>
@@ -405,13 +318,16 @@ function Shell() {
   const [dark, toggleTheme] = useTheme();
   const [wizardOpen, setWizardOpen] = useState(() => getStored("aeg-dash-wizard-done") !== "1");
   const [searchOpen, setSearchOpen] = useState(false);
-  const { ledger } = useStore();
+  const { ledger, agents, approvals } = useStore();
 
   const finishWizard = () => {
     setStored("aeg-dash-wizard-done", "1");
     removeStored("aeg-dash-wizard-step");
     setWizardOpen(false);
   };
+
+  // Global ⌘K / Ctrl+K shortcut opens the palette from anywhere on the dashboard.
+  useCommandKShortcut(() => setSearchOpen(true));
 
   // Keep the URL canonical when landing on bare #/app.
   useEffect(() => {
@@ -446,11 +362,23 @@ function Shell() {
               {route === "history" && <HistoryPage />}
               {route === "providers" && <ProvidersPage />}
               {route === "devices" && <DevicesPage />}
-              {route === "settings" && <SettingsPage onReopenWizard={() => setWizardOpen(true)} />}
+              {route === "settings" && (() => {
+                const sub = parseSettingsSubpath();
+                if (sub === null || sub === "overview") return <SettingsOverview />;
+                if (sub === "security") return <SettingsPage onReopenWizard={() => setWizardOpen(true)} />;
+                if (sub === "account") return <SettingsAccountPage />;
+                if (sub === "workspace") return <SettingsWorkspacePage />;
+                if (sub === "audit") return <SettingsAuditPage />;
+                if (sub === "notifications") return <SettingsNotificationsPage />;
+                if (sub === "integrations") return <SettingsIntegrationsPage />;
+                return <SettingsOverview />;
+              })()}
               {route === "support" && <SupportPage />}
               {route === "notifications" && <NotificationsPage onNav={nav} />}
               {route === "profile" && <ProfilePage />}
-              {route === "help" && <HelpPage />}
+              {route === "help" && (
+                <HelpPage onNav={nav} onOpenPalette={() => setSearchOpen(true)} />
+              )}
             </motion.div>
           </main>
         </SidebarInset>
@@ -458,11 +386,16 @@ function Shell() {
       <AnimatePresence>
         {wizardOpen && <Wizard onClose={finishWizard} onFinish={finishWizard} onNav={nav} />}
       </AnimatePresence>
-      <SearchModal
+      <CommandPalette
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         nav={nav}
         ledger={ledger}
+        agents={agents}
+        approvals={approvals}
+        dark={dark}
+        toggleTheme={toggleTheme}
+        onOpenWizard={() => setWizardOpen(true)}
       />
       <Toasts />
     </div>

@@ -453,35 +453,6 @@ function App() {
   // The live "eval" row matches on the literal "eval" label or the current request text
   const evalRowVisible = "eval".includes(mandateQuery.toLowerCase()) || scenarios[pIdx].req.toLowerCase().includes(mandateQuery.toLowerCase());
 
-  // FAQ accordion — first item open by default; null = all collapsed.
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const faqItems = [
-    {
-      q: "What exactly is an agent passport?",
-      a: "An agent passport is the agent’s own cryptographic identity. It signs requests and audit entries so permissions can be scoped and revoked cleanly.",
-    },
-    {
-      q: "How is this different from giving an agent my API keys?",
-      a: "API keys give broad access to whoever has them. AgentTag gives each agent a separate identity with narrow, policy-based permissions.",
-    },
-    {
-      q: "What does “governed by mandates” mean in practice?",
-      a: "It means the rules are defined as policy: what the agent can do, how much it can spend, when it must ask for approval, and when access expires.",
-    },
-    {
-      q: "Which clients and tools does it work with?",
-      a: "AgentTag works with MCP-compatible and A2A-style clients, including tools like Claude Desktop, CrewAI, and LangChain.",
-    },
-    {
-      q: "Is the audit ledger really tamper-evident?",
-      a: "Yes. Actions are hash-chained so history can be verified and quietly altered entries are much harder to hide.",
-    },
-    {
-      q: "What does it cost during the beta?",
-      a: "Nothing. The public beta is free.",
-    },
-  ];
-
 
 
   // Derived values
@@ -706,6 +677,7 @@ function App() {
         </div>
         <a className="nav-link" href="#pricing">Pricing</a>
         <a className="nav-link" href="#surface">Docs</a>
+        <a className="nav-link" href="#/support">Support</a>
       </div>
     </div>
     
@@ -758,6 +730,7 @@ function App() {
       <a className="mobile-nav-link" href="#ledger" onClick={() => setMobileMenuOpen(false)}>Audit</a>
       <a className="mobile-nav-link" href="#pricing" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
       <a className="mobile-nav-link" href="#surface" style={{opacity: ".7"}} onClick={() => setMobileMenuOpen(false)}>Docs</a>
+      <a className="mobile-nav-link" href="#/support" onClick={() => setMobileMenuOpen(false)}>Support</a>
       <a className="btn btn-ink" href="#cta" style={{marginTop: "10px", justifyContent: "center", width: "100%"}} onClick={() => setMobileMenuOpen(false)}>Request access</a>
     </div>
   </div>
@@ -1976,53 +1949,35 @@ function App() {
 </div>
 </div>
 </section>
-{/* ==================== FAQ ==================== */}
+{/* ==================== SUPPORT HUB TEASER ==================== */}
 <section className="aeg-section aeg-wrap" id="faq">
-<div className="eyebrow"><span className="eyebrow-num">07</span><span className="eyebrow-label">FAQ</span></div>
+<div className="eyebrow"><span className="eyebrow-num">07</span><span className="eyebrow-label">Support</span></div>
 <h2 className="display" style={{margin: "0 0 14px", fontSize: "clamp(33px, 4.6vw, 54px)", lineHeight: "1.05"}}>Questions, <span className="accent-it">answered.</span></h2>
-<p style={{maxWidth: "560px", margin: "0 0 40px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Everything you need to know about giving an agent its own governed identity.</p>
-<div className="faq-list">
-{faqItems.map((item, i) => {
-  const open = openFaq === i;
-  return (
-    <div className={`faq-item${open ? " is-open" : ""}`} key={i}>
-      <button
-        className="faq-q"
-        type="button"
-        aria-expanded={open}
-        aria-controls={`faq-panel-${i}`}
-        onClick={() => setOpenFaq(open ? null : i)}
-      >
-        <span className="faq-q-text">{item.q}</span>
-        <motion.span
-          className="faq-chevron"
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ type: "spring", duration: 0.3, bounce: 0 }}
-          aria-hidden="true"
-        >
-          <svg fill="none" height="18" width="18" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </motion.span>
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            id={`faq-panel-${i}`}
-            className="faq-a-wrap"
-            key="content"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "spring", duration: 0.4, bounce: 0 }}
-            style={{ overflow: "hidden" }}
-          >
-            <p className="faq-a">{item.a}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+<p style={{maxWidth: "560px", margin: "0 0 40px", fontSize: "17px", lineHeight: "1.65", color: "var(--muted)"}}>Everything you need to know about giving an agent its own governed identity — plus live channels to the team.</p>
+
+{/* Teaser card linking to the dedicated Support Center */}
+<a className="support-teaser-card card-spotlight" href="#/support">
+  <div className="support-teaser-icon">
+    <svg fill="none" height="28" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" viewBox="0 0 24 24" width="28"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2.5-3 4"></path><path d="M12 17h.01"></path></svg>
+  </div>
+  <div className="support-teaser-body">
+    <div className="support-teaser-eyebrow">Support Center</div>
+    <h3 className="support-teaser-title">Browse the full knowledge base</h3>
+    <p className="support-teaser-desc">
+      Search 12 articles across Fundamentals, Getting started, Integrations, Security, and Billing —
+      or reach a human on email, Discord, or GitHub.
+    </p>
+    <div className="support-teaser-meta">
+      <span className="support-teaser-chip"><span className="support-teaser-dot"></span>All systems operational</span>
+      <span className="support-teaser-divider"></span>
+      <span>Avg. response &lt; 6h</span>
     </div>
-  );
-})}
-</div>
+  </div>
+  <div className="support-teaser-cta">
+    <span>Open Support Center</span>
+    <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+  </div>
+</a>
 </section>
 {/* ==================== CTA ==================== */}
 <section className="aeg-section aeg-wrap cta-section-new" id="cta">
@@ -2094,7 +2049,7 @@ function App() {
 <a className="footer-link" href="#/case-studies">Case Studies</a>
 <a className="footer-link" href="#/blog">Blog & Insights</a>
 <a className="footer-link" href="#/research">Research</a>
-<a className="footer-link" href="#faq">FAQ</a>
+<a className="footer-link" href="#/support">FAQ</a>
 <a className="footer-link" href="https://status.agenttag.ai" target="_blank" rel="noopener noreferrer">Status</a>
 </div>
 <div>

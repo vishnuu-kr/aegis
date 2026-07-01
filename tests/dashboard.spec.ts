@@ -154,4 +154,35 @@ test.describe('Dashboard E2E Tests', () => {
     );
     expect(ourOriginErrors, `Unexpected console errors: ${ourOriginErrors.join('\n')}`).toEqual([]);
   });
+
+  // Settings: Enforcement toggle persists across page reload
+  test('enforcement toggle persists', async ({ page }) => {
+    // Navigate to Settings → Security (the consolidated detail route that
+    // keeps the enforcement, license, API URL, and step-up controls).
+    await page.goto('/#/app/settings/security');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(300);
+
+    // Locate the global enforcement toggle by its aria-label
+    const toggle = page.locator('[aria-label="global enforcement"]');
+    await expect(toggle).toBeVisible();
+
+    // Capture initial state, then flip
+    const initialChecked = await toggle.getAttribute('aria-checked');
+    const expectedAfterFlip = initialChecked === 'true' ? 'false' : 'true';
+    await toggle.click();
+
+    // Verify it flipped immediately
+    await expect(toggle).toHaveAttribute('aria-checked', expectedAfterFlip);
+
+    // Reload the page — state should survive (in-memory module-level store)
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(300);
+
+    // Re-locate the toggle after reload and assert it persisted
+    const toggleAfterReload = page.locator('[aria-label="global enforcement"]');
+    await expect(toggleAfterReload).toBeVisible();
+    await expect(toggleAfterReload).toHaveAttribute('aria-checked', expectedAfterFlip);
+  });
 });

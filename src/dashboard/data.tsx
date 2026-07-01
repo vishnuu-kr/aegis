@@ -55,6 +55,12 @@ export interface Provider {
   desc: string;
   connected: boolean;
   category: "payments" | "comms" | "compute" | "data";
+  // Credentials are populated when the operator connects a provider via the
+  // Connect modal. They stay in memory — never sent to the agent. Keys vary by
+  // provider (e.g. stripe → apiKey, twilio → accountSid/authToken/fromNumber,
+  // github → personalAccessToken).
+  credentials?: Record<string, string>;
+  connectedAt?: number;
 }
 
 export interface Device {
@@ -63,7 +69,21 @@ export interface Device {
   kind: "laptop" | "phone" | "security-key";
   lastSeen: number;
   current: boolean;
+  // For devices paired via WebAuthn — the credential id (base64url-encoded rawId).
+  credentialId?: string;
+  // When the device was paired (distinct from lastSeen which tracks activity).
+  pairedAt?: number;
 }
+
+export type NotifyEvent =
+  | "stepup_required"
+  | "mandate_denied"
+  | "mandate_expiring"
+  | "device_paired"
+  | "member_invited"
+  | "weekly_digest";
+
+export type NotifyChannel = "email" | "sms" | "push";
 
 export interface Settings {
   enforcement: boolean;
@@ -72,6 +92,11 @@ export interface Settings {
   stepUpThreshold: number;
   notifyEmail: boolean;
   notifySms: boolean;
+  notifyPush: boolean;
+  notifyRouting: Record<NotifyEvent, Record<NotifyChannel, boolean>>;
+  quietHoursStart?: string;            // "22:00"
+  quietHoursEnd?: string;              // "07:00"
+  quietHoursTz?: string;               // IANA tz
 }
 
 // ============================================================
@@ -236,10 +261,9 @@ const seedLedger: LedgerEntry[] = Array.from({ length: 9 }).map((_, i) => {
 const seedProviders: Provider[] = [
   { id: "stripe", name: "Stripe", desc: "Issue & charge virtual cards", connected: true, category: "payments" },
   { id: "twilio", name: "Twilio", desc: "Route SMS verification codes", connected: true, category: "comms" },
-  { id: "github", name: "GitHub Actions", desc: "Scoped deploy tokens", connected: true, category: "compute" },
-  { id: "vercel", name: "Vercel", desc: "Host & deploy projects", connected: false, category: "compute" },
-  { id: "cloudflare", name: "Cloudflare", desc: "DNS & edge workers", connected: false, category: "compute" },
-  { id: "postgres", name: "Postgres", desc: "Managed agent database", connected: false, category: "data" },
+  { id: "agentmail", name: "AgentMail", desc: "Send & receive agent email", connected: true, category: "comms" },
+  { id: "agentcard", name: "AgentCard", desc: "Issue programmable virtual cards", connected: true, category: "payments" },
+  { id: "playwright", name: "Playwright", desc: "Headless browser automation", connected: true, category: "compute" },
 ];
 
 const seedDevices: Device[] = [
@@ -271,10 +295,17 @@ interface StoreShape {
   resolveApproval: (id: string, decision: "approve" | "deny") => void;
   toggleAgentEnforcement: (id: string) => void;
   setAgentStatus: (id: string, status: Agent["status"]) => void;
+  updateAgent: (id: string, patch: Partial<Omit<Agent, "id" | "did" | "spendUsed" | "tasks">>) => void;
+  toggleMandate: (agentId: string, mandateId: string) => void;
+  removeMandate: (agentId: string, mandateId: string) => void;
+  addMandate: (agentId: string, label: string, detail: string) => void;
   toggleProvider: (id: string) => void;
+  connectProvider: (id: string, credentials: Record<string, string>) => void;
+  disconnectProvider: (id: string) => void;
   revokeDevice: (id: string) => void;
-  addDevice: (name: string, kind: Device["kind"]) => void;
-  updateSettings: (patch: Partial<Settings>) => void;
+  addDevice: (name: string, kind: Device["kind"], opts?: { credentialId?: string; pairedAt?: number }) => void;
+  updateSettings: (patch: Partial<Settings>, reason?: string) => void;
+  recordSettingChange: (key: keyof Settings, from: unknown, to: unknown, reason?: string) => void;
   toast: (msg: string, tone?: Toast["tone"]) => void;
   dismissToast: (id: number) => void;
 }
@@ -287,13 +318,37 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ledger, setLedger] = useState<LedgerEntry[]>(seedLedger);
   const [providers, setProviders] = useState<Provider[]>(seedProviders);
   const [devices, setDevices] = useState<Device[]>(seedDevices);
-  const [settings, setSettings] = useState<Settings>({
-    enforcement: true,
-    licenseKey: "",
-    apiUrl: "https://aegis-backend-production-a853.up.railway.app",
-    stepUpThreshold: 200,
-    notifyEmail: true,
-    notifySms: true,
+  const [settings, setSettings] = useState<Settings>(() => {
+    const defaults: Settings = {
+      enforcement: true,
+      licenseKey: "",
+      apiUrl: "https://aegis-backend-production-a853.up.railway.app",
+      stepUpThreshold: 200,
+      notifyEmail: true,
+      notifySms: true,
+      notifyPush: false,
+      notifyRouting: {
+        stepup_required:   { email: true,  sms: false, push: true  },
+        mandate_denied:    { email: true,  sms: true,  push: true  },
+        mandate_expiring:  { email: true,  sms: false, push: false },
+        device_paired:     { email: true,  sms: false, push: true  },
+        member_invited:    { email: true,  sms: false, push: false },
+        weekly_digest:     { email: true,  sms: false, push: false },
+      },
+      quietHoursStart: "22:00",
+      quietHoursEnd: "07:00",
+      quietHoursTz: "America/Sao_Paulo",
+    };
+    try {
+      const raw = window.localStorage.getItem("aeg-settings");
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<Settings>;
+        return { ...defaults, ...parsed };
+      }
+    } catch {
+      /* localStorage unavailable or corrupt — use defaults */
+    }
+    return defaults;
   });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const seqRef = useRef(1049);
@@ -351,6 +406,57 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const updateAgent: StoreShape["updateAgent"] = (id, patch) => {
+    setAgents((list) =>
+      list.map((a) => {
+        if (a.id !== id) return a;
+        const next = { ...a, ...patch };
+        toast(`${next.name} updated`, "ok");
+        pushLedger(`policy edit: ${next.name}`, "ALLOW", "operator", "policy");
+        return next;
+      })
+    );
+  };
+
+  const toggleMandate: StoreShape["toggleMandate"] = (agentId, mandateId) => {
+    setAgents((list) =>
+      list.map((a) => {
+        if (a.id !== agentId) return a;
+        const mandates = a.mandates.map((m) =>
+          m.id === mandateId ? { ...m, active: !m.active } : m
+        );
+        return { ...a, mandates };
+      })
+    );
+  };
+
+  const removeMandate: StoreShape["removeMandate"] = (agentId, mandateId) => {
+    setAgents((list) =>
+      list.map((a) => {
+        if (a.id !== agentId) return a;
+        return { ...a, mandates: a.mandates.filter((m) => m.id !== mandateId) };
+      })
+    );
+  };
+
+  const addMandate: StoreShape["addMandate"] = (agentId, label, detail) => {
+    const trimmedLabel = label.trim();
+    const trimmedDetail = detail.trim();
+    if (!trimmedLabel) return;
+    const newMandate: Mandate = {
+      id: "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      label: trimmedLabel,
+      detail: trimmedDetail || "—",
+      active: true,
+    };
+    setAgents((list) =>
+      list.map((a) =>
+        a.id === agentId ? { ...a, mandates: [...a.mandates, newMandate] } : a
+      )
+    );
+    toast(`Mandate "${trimmedLabel}" added`, "ok");
+  };
+
   const toggleProvider: StoreShape["toggleProvider"] = (id) => {
     setProviders((list) =>
       list.map((p) => {
@@ -362,6 +468,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const connectProvider: StoreShape["connectProvider"] = (id, credentials) => {
+    setProviders((list) =>
+      list.map((p) => {
+        if (p.id !== id) return p;
+        toast(`${p.name} connected`, "ok");
+        return { ...p, connected: true, credentials, connectedAt: Date.now() };
+      })
+    );
+    const provider = providers.find((p) => p.id === id);
+    pushLedger(`vault → ${id} credentials`, "ALLOW", "operator", "cred_use");
+    void provider; // referenced for clarity
+  };
+
+  const disconnectProvider: StoreShape["disconnectProvider"] = (id) => {
+    setProviders((list) =>
+      list.map((p) => {
+        if (p.id !== id) return p;
+        toast(`${p.name} disconnected`, "info");
+        return { ...p, connected: false, credentials: undefined, connectedAt: undefined };
+      })
+    );
+    pushLedger(`revoke ${id} credentials`, "ALLOW", "operator", "cred_use");
+  };
+
   const revokeDevice: StoreShape["revokeDevice"] = (id) => {
     setDevices((list) => {
       const d = list.find((x) => x.id === id);
@@ -370,12 +500,46 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const addDevice: StoreShape["addDevice"] = (name, kind) => {
-    setDevices((list) => [...list, { id: "d" + Date.now(), name, kind, lastSeen: Date.now(), current: false }]);
+  const addDevice: StoreShape["addDevice"] = (name, kind, opts) => {
+    const now = Date.now();
+    setDevices((list) => [...list, {
+      id: "d" + now,
+      name,
+      kind,
+      lastSeen: now,
+      current: false,
+      credentialId: opts?.credentialId,
+      pairedAt: opts?.pairedAt ?? now,
+    }]);
     toast(`${name} linked`, "ok");
   };
 
-  const updateSettings: StoreShape["updateSettings"] = (patch) => setSettings((s) => ({ ...s, ...patch }));
+  const updateSettings: StoreShape["updateSettings"] = (patch, reason) => {
+    setSettings((s) => {
+      const next = { ...s, ...patch };
+      let changed = false;
+      (Object.keys(patch) as Array<keyof Settings>).forEach((k) => {
+        if (s[k] !== patch[k]) {
+          recordSettingChange(k, s[k], patch[k], reason);
+          changed = true;
+        }
+      });
+      if (changed) {
+        try {
+          window.localStorage.setItem("aeg-settings", JSON.stringify(next));
+        } catch {
+          /* localStorage unavailable — ignore */
+        }
+      }
+      return next;
+    });
+  };
+
+  const recordSettingChange: StoreShape["recordSettingChange"] = (key, from, to, reason) => {
+    const summary = `set ${String(key)}: ${JSON.stringify(from)} → ${JSON.stringify(to)}`;
+    const action = reason ? `${summary} (${reason})` : summary;
+    pushLedger(action, "OK", "operator", "policy");
+  };
 
   // Live ledger heartbeat — appends a benign event periodically.
   useEffect(() => {
@@ -393,8 +557,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<StoreShape>(
     () => ({
       agents, approvals, ledger, providers, devices, settings, toasts,
-      resolveApproval, toggleAgentEnforcement, setAgentStatus, toggleProvider,
-      revokeDevice, addDevice, updateSettings, toast, dismissToast,
+      resolveApproval, toggleAgentEnforcement, setAgentStatus,
+      updateAgent, toggleMandate, removeMandate, addMandate,
+      toggleProvider, connectProvider, disconnectProvider,
+      revokeDevice, addDevice, updateSettings, recordSettingChange, toast, dismissToast,
     }),
     [agents, approvals, ledger, providers, devices, settings, toasts]
   );

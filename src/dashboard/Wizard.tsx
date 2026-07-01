@@ -55,7 +55,7 @@ export function Wizard({ onClose, onFinish, onNav }: { onClose: () => void; onFi
   const [client, setClient] = useState<"claude" | "chatgpt" | "custom">("claude");
   const [copied, setCopied] = useState(false);
 
-  const setupProviders = providers.filter((p) => ["stripe", "twilio", "github"].includes(p.id));
+  const setupProviders = providers.filter((p) => ["stripe", "twilio", "agentmail", "agentcard", "playwright"].includes(p.id));
   const last = step === STEPS.length - 1;
 
   const next = () => setStepPersisted((s) => s + 1);
